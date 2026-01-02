@@ -17,9 +17,11 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <PackageReference Include="GenHTTP.Core" Version="10.4.0" />
+
+        <PackageReference Include="GenHTTP.Modules.IO" Version="10.4.0" />
         <Reference Include="$(VINTAGE_STORY)/**/*.dll" Private="false" />
         <PackageReference Include="NuGet.Build.Tasks.Pack" Version="6.7.0" IncludeAssets="compile" PrivateAssets="all" />
-        <PackageReference Include="MimeTypeMapOfficial" Version="1.0.17" IncludeAssets="compile;runtime" PrivateAssets="all" />
         <None Include="LICENSE;README.md;resources/**" CopyToOutputDirectory="PreserveNewest" Pack="true" PackagePath="" Link="%(RecursiveDir)%(Filename)%(Extension)" />
     </ItemGroup>
 
@@ -42,8 +44,7 @@
         <WriteLinesToFile Lines="$([System.IO.File]::ReadAllText($(ModInfoJson))
             .Replace('{version}','$(Version)')
             .Replace('{description}','$(Description)')
-            )" File="$(ModInfoJson)" Overwrite="true" Encoding="UTF-8"
-        />
+            )" File="$(ModInfoJson)" Overwrite="true" Encoding="UTF-8" />
     </Target>
 
     <Target Name="FilterIndexHtml" AfterTargets="FilterModInfo">
@@ -52,8 +53,7 @@
         </PropertyGroup>
         <WriteLinesToFile Lines="$([System.IO.File]::ReadAllText($(IndexHTML))
             .Replace('{description}','$(Description)')
-            )" File="$(IndexHTML)" Overwrite="true" Encoding="UTF-8"
-        />
+            )" File="$(IndexHTML)" Overwrite="true" Encoding="UTF-8" />
     </Target>
 
     <Target Name="Package" AfterTargets="FilterIndexHtml">
