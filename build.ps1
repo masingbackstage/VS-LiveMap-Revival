@@ -93,6 +93,11 @@ else {
     New-Item -ItemType Directory -Path $ReleaseDir | Out-Null
 }
 Move-Item -Path $LatestZip.FullName -Destination (Join-Path $ReleaseDir $LatestZip.Name)
+# append version to zip name
+$Version = Get-Content (Join-Path $ProjectRoot "resources\modinfo.json") | ConvertFrom-Json | Select-Object -ExpandProperty version
+$NewZipName = "LiveMap-$Version.zip"
+Write-Host "Renaming zip to $NewZipName" -ForegroundColor Green
+Move-Item -Path (Join-Path $ReleaseDir $LatestZip.Name) -Destination (Join-Path $ReleaseDir $NewZipName)
 
 Write-Host ""
 Write-Success "Build completed successfully!"

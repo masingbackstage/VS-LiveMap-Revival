@@ -74,6 +74,12 @@ if [[ ! -d "$VINTAGE_STORY" ]]; then
     exit 1
 fi
 
+# Ensure jq exists
+if ! command -v jq &> /dev/null; then
+    error "jq could not be found. Please install it before running this script."
+    exit 1
+fi
+
 success "VINTAGE_STORY: $VINTAGE_STORY"
 
 # Clean if requested
@@ -117,6 +123,10 @@ else
     mkdir "$RELEASE_DIR"
 fi
 mv "$LATEST_ZIP" "$RELEASE_DIR/"
+# append version to zip name
+VERSION=$(cat "$PROJECT_ROOT/resources/modinfo.json" | jq -r .version)
+NEW_ZIP_NAME="LiveMap-$VERSION.zip"
+mv "$RELEASE_DIR/LiveMap.zip" "$RELEASE_DIR/$NEW_ZIP_NAME"
 
 echo ""
 success "Build completed successfully!"
