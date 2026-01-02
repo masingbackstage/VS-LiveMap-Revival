@@ -1,5 +1,6 @@
 import * as L from 'leaflet';
 
+import { ArrayUtils } from '../util/ArrayUtils';
 import { Circle } from './marker/Circle';
 import { Ellipse } from './marker/Ellipse';
 import { Icon } from './marker/Icon';
@@ -17,6 +18,7 @@ interface Defaults {
 }
 
 interface LayerJson {
+	id?: string;
 	label: string;
 	interval: number;
 	hidden: boolean;
@@ -41,6 +43,7 @@ export class MarkersLayer extends L.LayerGroup {
 	private _json?: LayerJson;
 
 	private _updating: boolean = false;
+	private _initialized: boolean = false;
 
 	constructor(livemap: LiveMap, url: string, interval?: number) {
 		super([]);
@@ -93,9 +96,10 @@ export class MarkersLayer extends L.LayerGroup {
 		this._updating = true;
 		window.fetchJson<LayerJson>(this._url)
 			.then((json: LayerJson): void => {
-				if (!this._label) {
+				if (!this._initialized) {
 					// this is the first tick
 					this.initial(json);
+					this._initialized = true;
 				}
 
 				// refresh markers
@@ -111,7 +115,8 @@ export class MarkersLayer extends L.LayerGroup {
 	protected initial(json: object): void {
 		const layerJson: LayerJson = json as LayerJson;
 
-		this._label = layerJson.label ?? ''; // set _something_ so we don't keep reloading json every tick
+		this._id = layerJson.id;
+		this._label = layerJson.label || this._id || 'Unknown Layer'; // set _something_ so we don't keep reloading json every tick
 		this._interval = layerJson.interval ?? 300;
 		this._defaults = layerJson.defaults;
 		this._json = layerJson;
@@ -162,7 +167,7 @@ export class MarkersLayer extends L.LayerGroup {
 					this._markers.set(markerJson.id, marker);
 				} else {
 					// existing marker - do not remove
-					toRemove.remove(markerJson.id);
+					ArrayUtils.remove(toRemove, markerJson.id);
 				}
 				// update marker data
 				marker.update(markerJson);

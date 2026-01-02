@@ -71,7 +71,7 @@ export class LiveMap extends L.Map {
 		}
 
 		// pre-calculate map's scale
-		this._scale ??= (1 / (2 ** settings.zoom.maxout));
+		this._scale = (1 / (2 ** settings.zoom.maxout));
 
 		// set up the controllers
 		this._tileLayerControl = new TileLayerControl(this);
@@ -258,12 +258,7 @@ window.createSVGIcon = (icon: string): DocumentFragment => {
 	return template.content;
 };
 
-// https://stackoverflow.com/a/3955096
-Array.prototype.remove = function <T>(obj: T, ax?: number): void {
-	while ((ax = this.indexOf(obj)) !== -1) {
-		this.splice(ax, 1);
-	}
-};
+
 
 
 const knownThemes: string[] = [];
