@@ -7,24 +7,70 @@ on:
     branches: ["master", "old"]
 
 jobs:
-  build:
+  test-csharp:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      # Cache DLLs
+      - name: Get Date
+        id: date
+        run: echo "week=$(date +'%U')" >> $GITHUB_OUTPUT
+        shell: bash
+
+      - name: Cache DLLs
+        id: cache-dlls
+        uses: actions/cache@v4
+        with:
+          path: ci_dlls
+          key: vs-dlls-${{ runner.os }}-${{ steps.date.outputs.week }}
+
+      - name: Extract DLLs with password
+        if: steps.cache-dlls.outputs.cache-hit != 'true'
+        env:
+          PASSWORD: ${{ secrets.VS_CI_DLLS_PASSWORD }}
+        run: |
+          curl -L https://cdn.theairplan.com/vintagestory/ci_dlls.zip -o ci_dlls.zip
+          unzip -P $PASSWORD ci_dlls.zip -d ci_dlls
+        shell: bash
+
+      - name: Set VINTAGE_STORY env path
+        run: echo "VINTAGE_STORY=$((Get-Location).Path)\ci_dlls" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Restore Dependencies
+        run: dotnet restore
+
+      - name: Run C# Tests
+        run: dotnet test --no-restore --verbosity normal
+
+  test-web:
     runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        node-version: [20.x]
-
     defaults:
       run:
         working-directory: web
-
     steps:
       - uses: actions/checkout@v4
-      - name: Use Node.js ${{ matrix.node-version }}
+
+      - name: Use Node.js 20.x
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: 20.x
           cache: "npm"
           cache-dependency-path: web/package-lock.json
-      - run: npm ci
-      - run: npm run test
+
+      - name: Install Web Dependencies
+        run: npm ci
+
+      - name: Run Web Lint
+        run: npm run lint
+
+      - name: Run Web Type Check
+        run: npm run type-check
+
+      - name: Run Web Tests
+        run: npm test
