@@ -2,6 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using HarmonyLib;
 using livemap.data;
 using livemap.network;
+using livemap.util;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -29,6 +30,7 @@ public sealed class LiveMapClient {
 
         _channel = api.Network.RegisterChannel(mod.Mod.Info.ModID)
             .RegisterMessageType<ColormapPacket>()
+            .RegisterMessageType<ColormapChunkPacket>()
             .SetMessageHandler<ColormapPacket>(_ => {
                 _logger.Event("Received colormap request from server");
 
@@ -44,6 +46,7 @@ public sealed class LiveMapClient {
                 }
 
                 _logger.Event("Sending generated colormap to server");
+                api.ShowChatMessage("command.colormap.generating".ToLang());
                 string json = colormap.Serialize();
 
                 FileInfo fileInfo = new(Path.Combine(GamePaths.ModConfig, "colormap.json"));
@@ -51,11 +54,30 @@ public sealed class LiveMapClient {
                     File.WriteAllText(fileInfo.FullName, json);
                     _logger.Event($"Wrote colormap to disk.");
                 } catch (Exception e) {
-                    _logger.Event($"Error sending colormap to server: {e}");
+                    _logger.Event($"Error saving colormap to disk: {e}");
                 }
 
-                // todo - rework this so it doesnt send one giant packet
-                _channel.SendPacket(new ColormapPacket { RawColormap = json }.Compress());
+                // Send colormap in chunks to avoid exceeding packet size limit
+                ColormapPacket packet = new ColormapPacket { RawColormap = json }.Compress();
+                ColormapChunkPacket[] chunks = packet.ToChunks().ToArray();
+                _logger.Event($"Sending colormap in {chunks.Length} chunks");
+
+                // Show progress at milestones to avoid spamming chat
+                int lastMilestone = 0;
+                for (int i = 0; i < chunks.Length; i++) {
+                    _channel.SendPacket(chunks[i]);
+
+                    // Show progress at 25%, 50%, 75%, 100% milestones
+                    int percent = (i + 1) * 100 / chunks.Length;
+                    int milestone = percent / 25 * 25; // Round down to nearest 25
+                    if (milestone > lastMilestone || i == chunks.Length - 1) {
+                        api.ShowChatMessage("command.colormap.sending".ToLang(i + 1, chunks.Length));
+                        lastMilestone = milestone;
+                    }
+                }
+
+                api.ShowChatMessage("command.colormap.sent".ToLang(chunks.Length));
+                _logger.Event("Colormap transfer complete");
             });
 
         _harmony = new Harmony(mod.Mod.Info.ModID);
