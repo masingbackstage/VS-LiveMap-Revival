@@ -132,6 +132,8 @@ public sealed class ColormapReceiver : IDisposable {
             Logger.Info("colormap.received-with-chunks".ToLang(player.PlayerName, transfer.TotalChunks));
 
             _server.Colormap.LoadFromPacket(_server.Sapi.World, packet);
+            // We should then run a full render with this new colormap data
+            _server.RenderTaskManager?.QueueAll();
         } catch (Exception e) {
             Logger.Error("colormap.failed-reassembly".ToLang(player.PlayerName, e));
             player.SendMessage(GlobalConstants.CurrentChatGroup, "command.colormap.error".ToLang(), EnumChatType.CommandError);

@@ -76,6 +76,10 @@ public sealed class RenderTaskManager {
         Logger.Debug($"Queueing region {regionX},{regionZ} (buffer: {_bufferQueue.Count} high:{_processQueueHigh.Count} low:{_processQueueLow.Count})");
     }
 
+    /// <summary>
+    /// Queues all map regions for rendering by adding their indices to the buffer queue
+    /// if they are not already queued or being processed. Initiates processing of the queue afterwards.
+    /// </summary>
     public void QueueAll() {
         if (_stopped) {
             return;
@@ -146,6 +150,16 @@ public sealed class RenderTaskManager {
                     }
 
                     ProcessRegion(region);
+                }
+            } catch (ThreadInterruptedException) {
+                // Expected during shutdown - don't log as error
+                if (!_stopped) {
+                    Logger.Warn("Render task interrupted unexpectedly");
+                }
+            } catch (OperationCanceledException) {
+                // Expected during shutdown - don't log as error
+                if (!_stopped) {
+                    Logger.Warn("Render task cancelled unexpectedly");
                 }
             } catch (Exception e) {
                 Logger.Error($"Render task processing failed: {e}");
