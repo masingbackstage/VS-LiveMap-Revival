@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Linq;
 using System.Net;
 using System.Reflection;
 using livemap.configuration;
@@ -15,7 +16,6 @@ namespace livemap.layer.builtin;
 public class VSCartographerLayer : Layer {
     private bool _isModInstalled;
     private object? _sharedLayer;
-    private PropertyInfo? _waypointsProperty;
     private FieldInfo? _waypointsField;
 
     public VSCartographerLayer() : base("vscartographer", "lang.vscartographer".ToLang()) {
@@ -32,35 +32,30 @@ public class VSCartographerLayer : Layer {
 
     public override List<Marker> Markers {
         get {
-            if (!_isModInstalled || _sharedLayer == null || (_waypointsProperty == null && _waypointsField == null)) {
+            if (!_isModInstalled || _sharedLayer == null || _waypointsField == null) {
                 return [];
             }
 
             try {
-                object? waypointsDict = _waypointsProperty != null
-                    ? _waypointsProperty.GetValue(_sharedLayer)
-                    : _waypointsField?.GetValue(_sharedLayer);
-                if (waypointsDict == null) {
+                // Waypoints is a public field: Dictionary<string, List<SharedWaypoint>>
+                object? waypointsDict = _waypointsField.GetValue(_sharedLayer);
+                if (waypointsDict == null || waypointsDict is not IDictionary dict) {
                     return [];
                 }
 
                 List<Marker> markers = [];
 
-                // waypointsDict is Dictionary<string, List<SharedWaypoint>>
-                // We need to iterate through it using reflection
-                if (waypointsDict is IDictionary dict) {
-                    foreach (DictionaryEntry entry in dict) {
-                        if (entry.Value is IEnumerable waypointList) {
-                            List<object?> waypointArray = waypointList.Cast<object?>().ToList();
-                            foreach (object? waypoint in waypointArray) {
-                                if (waypoint == null) {
-                                    continue;
-                                }
+                foreach (DictionaryEntry entry in dict) {
+                    if (entry.Value is IEnumerable waypointList) {
+                        List<object?> waypointArray = waypointList.Cast<object?>().ToList();
+                        foreach (object? waypoint in waypointArray) {
+                            if (waypoint == null) {
+                                continue;
+                            }
 
-                                Marker? marker = ConvertWaypointToMarker(waypoint);
-                                if (marker != null) {
-                                    markers.Add(marker);
-                                }
+                            Marker? marker = ConvertWaypointToMarker(waypoint);
+                            if (marker != null) {
+                                markers.Add(marker);
                             }
                         }
                     }
@@ -81,66 +76,50 @@ public class VSCartographerLayer : Layer {
     private bool DetectVSCartographer() {
         try {
             // Check if mod is installed
-            List<Mod> allMods = LiveMap.Api.Sapi.ModLoader.Mods.ToList();
-            Mod? mod = allMods.FirstOrDefault(m => m.Info.ModID == "nbcartographer");
-
+            Mod? mod = LiveMap.Api.Sapi.ModLoader.Mods.FirstOrDefault(m => m.Info.ModID == "nbcartographer");
             if (mod == null) {
                 return false;
             }
 
-            // Get WorldMapManager
+            // Get WorldMapManager (similar to MinimalCompass pattern)
             WorldMapManager? worldMapManager = LiveMap.Api.Sapi.ModLoader.GetModSystem<WorldMapManager>();
             if (worldMapManager == null) {
                 return false;
             }
 
-            // Find SharedWaypointMapLayer using reflection
+            // Try to access MapLayers directly (public property), fallback to reflection
+            IEnumerable? mapLayers = null;
+            PropertyInfo? mapLayersProperty = typeof(WorldMapManager).GetProperty("MapLayers", BindingFlags.Public | BindingFlags.Instance);
+            if (mapLayersProperty != null) {
+                mapLayers = mapLayersProperty.GetValue(worldMapManager) as IEnumerable;
+            } else {
+                // Fallback: try as field
+                FieldInfo? mapLayersField = typeof(WorldMapManager).GetField("MapLayers", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                if (mapLayersField != null) {
+                    mapLayers = mapLayersField.GetValue(worldMapManager) as IEnumerable;
+                }
+            }
+
+            if (mapLayers == null) {
+                return false;
+            }
+
+            // Find SharedWaypointMapLayer by LayerGroupCode (similar to OfType<> pattern)
             // The layer is registered with layer group "sharedwaypoints"
-            MemberInfo? mapLayersMember = FindMember(
-                typeof(WorldMapManager),
-                ["MapLayers", "mapLayers", "_mapLayers"],
-                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance
-            );
-
-            if (mapLayersMember == null) {
-                return false;
-            }
-
-            object? mapLayers = GetMemberValue(mapLayersMember, worldMapManager);
-            if (mapLayers == null || mapLayers is not IEnumerable layers) {
-                return false;
-            }
-
-            // Find the SharedWaypointMapLayer by checking layer group code
-            List<object?> layerList = layers.Cast<object?>().ToList();
-            foreach (object? layer in layerList) {
+            foreach (object? layer in mapLayers.Cast<object>()) {
                 if (layer == null) {
                     continue;
                 }
 
-                // Check if this layer has LayerGroupCode property equal to "sharedwaypoints"
+                // Check LayerGroupCode property (public property on MapLayer base class)
                 PropertyInfo? layerGroupCodeProperty = layer.GetType().GetProperty("LayerGroupCode", BindingFlags.Public | BindingFlags.Instance);
-                if (layerGroupCodeProperty != null) {
-                    object? layerGroupCode = layerGroupCodeProperty.GetValue(layer);
-                    if (layerGroupCode?.ToString() == "sharedwaypoints") {
-                        _sharedLayer = layer;
-                        // Try to find Waypoints as property or field
-                        MemberInfo? waypointsMember = FindPropertyOrField(
-                            layer.GetType(),
-                            "Waypoints",
-                            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance
-                        );
-
-                        if (waypointsMember != null) {
-                            if (waypointsMember is PropertyInfo property) {
-                                _waypointsProperty = property;
-                            } else if (waypointsMember is FieldInfo field) {
-                                _waypointsField = field;
-                            }
-                            return true;
-                        }
-
-                        return false;
+                if (layerGroupCodeProperty?.GetValue(layer)?.ToString() == "sharedwaypoints") {
+                    _sharedLayer = layer;
+                    // Waypoints is a public field: Dictionary<string, List<SharedWaypoint>>
+                    FieldInfo? waypointsField = layer.GetType().GetField("Waypoints", BindingFlags.Public | BindingFlags.Instance);
+                    if (waypointsField != null) {
+                        _waypointsField = waypointsField;
+                        return true;
                     }
                 }
             }
