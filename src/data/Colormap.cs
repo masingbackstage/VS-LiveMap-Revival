@@ -9,97 +9,149 @@ namespace livemap.data;
 
 public sealed class Colormap {
     private readonly Dictionary<string, uint[]> _colorsByName = [];
-
     private readonly Dictionary<int, uint[]> _colorsById = [];
+    private readonly object _lock = new(); // Internal state lock
+    private static readonly object _globalFileLock = new(); // File system lock for all Colormap instances
 
     public void Add(string block, uint[] toAdd) {
-        _colorsByName.TryAdd(block, toAdd);
+        lock (_lock) {
+            _colorsByName.TryAdd(block, toAdd);
+        }
     }
 
     public bool TryGet(int id, [MaybeNullWhen(false)] out uint[] colors) {
-        return _colorsById.TryGetValue(id, out colors);
+        lock (_lock) {
+            return _colorsById.TryGetValue(id, out colors);
+        }
     }
 
-    public int Count => _colorsById.Count;
+    public int Count {
+        get {
+            lock (_lock) {
+                return _colorsById.Count;
+            }
+        }
+    }
 
     public string Serialize() {
-        return JsonConvert.SerializeObject(_colorsByName);
+        lock (_lock) {
+            return JsonConvert.SerializeObject(_colorsByName);
+        }
     }
 
     public bool Deserialize(string? json) {
-        _colorsByName.Clear();
+        lock (_lock) {
+            _colorsByName.Clear();
 
-        if (string.IsNullOrEmpty(json)) {
-            return false;
-        }
-
-        try {
-            Dictionary<string, uint[]> data = JsonConvert.DeserializeObject<Dictionary<string, uint[]>>(json)!;
-            foreach ((string? key, uint[]? colors) in data) {
-                _colorsByName.TryAdd(key, colors);
+            if (string.IsNullOrEmpty(json)) {
+                return false;
             }
 
-            return true;
-        } catch (Exception e) {
-            Logger.Error(e.ToString());
-            return false;
+            try {
+                Dictionary<string, uint[]> data = JsonConvert.DeserializeObject<Dictionary<string, uint[]>>(json)!;
+                foreach ((string key, uint[] colors) in data) {
+                    _colorsByName.TryAdd(key, colors);
+                }
+
+                return true;
+            } catch (Exception e) {
+                Logger.Error(e.ToString());
+                return false;
+            }
         }
     }
 
     public void LoadFromPacket(IWorldAccessor world, ColormapPacket packet) {
         new Thread(_ => {
             if (Deserialize(packet.Decompress().RawColormap)) {
-                SaveToDisk();
+                SaveToDisk(packet.Month);
                 RefreshIds(world);
-                Logger.Info("colormap.saved-to-disk".ToLang());
+                Logger.Info($"Colormap for month {packet.Month} saved to disk");
             } else {
                 Logger.Warn("colormap.could-not-save-to-disk".ToLang());
             }
         }).Start();
     }
 
-    public void LoadFromDisk(IWorldAccessor world) {
+    public void LoadFromDisk(IWorldAccessor world, int month = -1) {
         new Thread(_ => {
             string? json = null;
-            if (File.Exists(Files.ColormapFile)) {
-                json = File.ReadAllText(Files.ColormapFile, Encoding.UTF8);
+            string path = month > 0 ? Files.GetColormapFile(month) : Files.ColormapFile;
+
+            lock (_globalFileLock) {
+                // If specific month file is missing, try to migrate or fall back
+                if (month > 0 && !File.Exists(path)) {
+                    bool migrated = false;
+
+                    // Try to migrate from legacy/default file if it exists
+                    if (File.Exists(Files.ColormapFile)) {
+                        try {
+                            File.Copy(Files.ColormapFile, path);
+                            Logger.Info($"Migrated default colormap to {Path.GetFileName(path)}");
+                            Logger.Warn("This is a static copy. Run '/livemap colormap' in-game to generate true seasonal colors.");
+                            migrated = true;
+                        } catch (Exception e) {
+                            Logger.Error($"Failed to migrate colormap: {e.Message}");
+                        }
+                    }
+
+                    // If migration didn't happen (failed or no source), fall back to default
+                    if (!migrated) {
+                        Logger.Warn($"Seasonal colormap {path} not found, falling back to default.");
+                        path = Files.ColormapFile;
+                    }
+                }
+
+                if (File.Exists(path)) {
+                    json = File.ReadAllText(path, Encoding.UTF8);
+                }
             }
 
             if (Deserialize(json)) {
                 RefreshIds(world);
-                Logger.Info("colormap.loaded-from-disk".ToLang());
+                Logger.Info($"Colormap loaded from disk ({Path.GetFileName(path)})");
             } else {
                 Logger.Warn("colormap.could-not-load-from-disk".ToLang());
             }
         }).Start();
     }
 
-    public void SaveToDisk() {
-        File.WriteAllText(Files.ColormapFile, Serialize(), Encoding.UTF8);
+    public void SaveToDisk(int month = -1) {
+        string path = month > 0 ? Files.GetColormapFile(month) : Files.ColormapFile;
+        string data = Serialize(); // Serialize outside lock to minimize file lock duration
+
+        lock (_globalFileLock) {
+            File.WriteAllText(path, data, Encoding.UTF8);
+        }
     }
 
     public void RefreshIds(IWorldAccessor world) {
-        _colorsById.Clear();
+        lock (_lock) {
+            _colorsById.Clear();
 
-        foreach ((string code, uint[] colors) in _colorsByName) {
-            Block block = world.GetBlock(new AssetLocation(code));
-            if (block == null) {
-                Logger.Warn("colormap.invalid-block-id".ToLang(code));
-                continue;
-            }
-
-            // add opaque alpha channel back
-            for (int i = 0; i < colors.Length; i++) {
-                if (colors[i] > 0) {
-                    colors[i] |= (uint)0xFF << 24;
+            foreach ((string code, uint[] colors) in _colorsByName) {
+                Block block = world.GetBlock(new AssetLocation(code));
+                if (block == null) {
+                    Logger.Warn($"Invalid block id in colormap ({code})");
+                    continue;
                 }
-            }
 
-            _colorsById.TryAdd(block.Id, colors);
+                // add opaque alpha channel back
+                for (int i = 0; i < colors.Length; i++) {
+                    if (colors[i] > 0) {
+                        colors[i] |= (uint)0xFF << 24;
+                    }
+                }
+
+                _colorsById.TryAdd(block.Id, colors);
+            }
         }
     }
 
     public void Dispose() {
-        _colorsByName.Clear();
+        lock (_lock) {
+            _colorsByName.Clear();
+            _colorsById.Clear();
+        }
     }
 }

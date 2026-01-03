@@ -1,20 +1,22 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Reflection;
 using HarmonyLib;
 using livemap.data;
 using livemap.network;
 using livemap.util;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.Common;
+using Vintagestory.GameContent;
 
 namespace livemap;
 
 [HarmonyPatch]
 public sealed class LiveMapClient {
-    private static BlockPos? _overridePos;
+    [ThreadStatic] private static BlockPos? _overridePos;
+    [ThreadStatic] private static float? _overrideMonth;
 
     private readonly LiveMapMod _mod;
     private readonly ICoreClientAPI _api;
@@ -22,6 +24,10 @@ public sealed class LiveMapClient {
     private readonly Harmony _harmony;
 
     private IClientNetworkChannel? _channel;
+
+    // Lock object for thread-safe patching
+    private static readonly object _patchLock = new();
+    private bool _patched;
 
     public LiveMapClient(LiveMapMod mod, ICoreClientAPI api) {
         _mod = mod;
@@ -33,73 +39,115 @@ public sealed class LiveMapClient {
             .RegisterMessageType<ColormapChunkPacket>()
             .SetMessageHandler<ColormapPacket>(_ => {
                 _logger.Event("colormap.request-received".ToLang());
-
                 if (!api.World.Player.HasPrivilege(Privilege.root)) {
                     _logger.Event("no.privilege".ToLang());
                     return;
                 }
 
-                Colormap? colormap = GenerateColormap();
+                EnsurePatched();
 
-                if (colormap == null || _channel is not { Connected: true }) {
-                    return;
-                }
+                new Thread(() => {
+                    EntityPlayer player = _api.World.Player.Entity;
+                    _overridePos = player.SidedPos.AsBlockPos;
+                    try {
+                        for (int month = 1; month <= 12; month++) {
+                            // Calculate YearRel for the middle of each month (approximate)
+                            // 12 months = 1.0 YearRel
+                            // Month 1 (Jan) ~= 0.0 - 0.08
+                            // Middle of Month 1 ~= 0.04
+                            // Formula: (month - 0.5) / 12.0
+                            _overrideMonth = (month - 0.5f) / 12.0f;
+                            int currentMonth = month; // Fix access to modified closure
 
-                _logger.Event("colormap.sending-generated".ToLang());
-                api.ShowChatMessage("command.colormap.generating".ToLang());
-                string json = colormap.Serialize();
+                            _logger.Event($"Generating colormap for month {month}...");
+                            api.Event.EnqueueMainThreadTask(() => api.ShowChatMessage("command.colormap.generating-month".ToLang(currentMonth)), "livemap-chat");
 
-                FileInfo fileInfo = new(Path.Combine(GamePaths.ModConfig, "colormap.json"));
-                try {
-                    File.WriteAllText(fileInfo.FullName, json);
-                    _logger.Event("colormap.wrote".ToLang());
-                } catch (Exception e) {
-                    _logger.Event("colormap.error-saving".ToLang(e));
-                }
+                            if (_channel is not { Connected: true }) {
+                                _logger.Warning("[LiveMap] Connection lost during colormap generation. Aborting.");
+                                return;
+                            }
 
-                // Send colormap in chunks to avoid exceeding packet size limit
-                ColormapPacket packet = new ColormapPacket { RawColormap = json }.Compress();
-                ColormapChunkPacket[] chunks = packet.ToChunks().ToArray();
-                _logger.Event("colormap.sending".ToLang(chunks.Length));
+                            Colormap? colormap = GenerateColormap();
+                            if (colormap == null) {
+                                _logger.Warning($"[LiveMap] Failed to generate colormap for month {month}. Skipping.");
+                                continue;
+                            }
 
-                // Show progress at milestones to avoid spamming chat
-                int lastMilestone = 0;
-                for (int i = 0; i < chunks.Length; i++) {
-                    _channel.SendPacket(chunks[i]);
+                            string json = colormap.Serialize();
+                            ColormapPacket responsePacket = new ColormapPacket { RawColormap = json, Month = month }.Compress();
+                            ColormapChunkPacket[] chunks = responsePacket.ToChunks().ToArray();
 
-                    // Show progress at 25%, 50%, 75%, 100% milestones
-                    int percent = (i + 1) * 100 / chunks.Length;
-                    int milestone = percent / 25 * 25; // Round down to nearest 25
-                    if (milestone > lastMilestone || i == chunks.Length - 1) {
-                        api.ShowChatMessage("command.colormap.sending".ToLang(i + 1, chunks.Length));
-                        lastMilestone = milestone;
+                            foreach (ColormapChunkPacket t in chunks) {
+                                _channel.SendPacket(t);
+                                Thread.Sleep(10); // Throttle slightly
+                            }
+
+                            _logger.Event($"Sent colormap for month {month}");
+                        }
+
+                        api.Event.EnqueueMainThreadTask(() => api.ShowChatMessage("command.colormap.sent".ToLang(12)), "livemap-chat");
+                    } finally {
+                        _overridePos = null;
+                        _overrideMonth = null;
                     }
-                }
-
-                api.ShowChatMessage("command.colormap.sent".ToLang(chunks.Length));
-                _logger.Event("colormap.sent".ToLang(chunks.Length));
+                }).Start();
             });
 
         _harmony = new Harmony(mod.Mod.Info.ModID);
-        _harmony.PatchAll();
+    }
+
+    private void EnsurePatched() {
+        if (_patched) {
+            return;
+        }
+
+        lock (_patchLock) {
+            if (_patched) {
+                return;
+            }
+
+            try {
+                // Target the base GameCalendar class directly as it contains the logic we want to override
+                Type calendarType = typeof(GameCalendar);
+                _logger.Event($"[LiveMap] Patching calendar base type: {calendarType.FullName}");
+
+                MethodInfo? yearRelGetter = AccessTools.PropertyGetter(calendarType, "YearRel");
+                if (yearRelGetter != null) {
+                    _harmony.Patch(yearRelGetter, prefix: new HarmonyMethod(GetType(), nameof(PreYearRel)));
+                    _logger.Event("[LiveMap] Patched YearRel successfully");
+                } else {
+                    _logger.Warning("[LiveMap] Could not find YearRel getter on GameCalendar");
+                }
+
+
+                _patched = true;
+            } catch (Exception e) {
+                _logger.Error($"[LiveMap] Failed to patch calendar: {e}");
+            }
+        }
     }
 
     private Colormap? GenerateColormap() {
-        if (_overridePos != null) {
+        if (_overridePos == null) {
             return null;
         }
 
+
         Colormap colormap = new();
         EntityPlayer player = _api.World.Player.Entity;
-        _overridePos = player.SidedPos.AsBlockPos;
 
         try {
             foreach (Block block in player.World.Blocks.Where(block => block.Code != null)) {
-                if (_overridePos == null) {
-                    return null;
+                uint baseColor;
+                if (block is BlockRequireSolidGround) {
+                    baseColor = Color.Reverse((uint)_api.BlockTextureAtlas.GetAverageColor(block.TextureSubIdForBlockColor));
+                } else if (block is BlockPlant) {
+                    Block tallGrassBlock = _api.World.GetBlock(new AssetLocation("game:tallgrass-tall-free"));
+                    baseColor = Color.Reverse((uint)tallGrassBlock.GetColor(_api, _overridePos));
+                } else {
+                    baseColor = Color.Reverse((uint)block.GetColor(_api, _overridePos));
                 }
 
-                uint baseColor = Color.Reverse((uint)block.GetColor(_api, _overridePos));
                 uint[] colors = new uint[30];
                 for (int i = 0; i < colors.Length; i++) {
                     uint randColor = (uint)block.GetRandomColor(_api, _overridePos, BlockFacing.UP, i);
@@ -113,27 +161,23 @@ public sealed class LiveMapClient {
             _logger.Error(e.ToString());
         }
 
-        _overridePos = null;
-
         return colormap;
     }
 
-    [HarmonyPrefix]
-    [HarmonyPatch(typeof(GameCalendar), "get_YearRel")]
     [SuppressMessage("ReSharper", "InconsistentNaming")]
     [SuppressMessage("ReSharper", "UnusedMember.Global")]
     public static bool PreYearRel(IGameCalendar __instance, ref float __result) {
-        if (_overridePos == null) {
+        if (_overrideMonth == null) {
             return true;
         }
 
-        __result = __instance.GetHemisphere(_overridePos) == EnumHemisphere.North ? 0.6f : 0.1f;
+        __result = _overrideMonth.Value;
         return false;
     }
 
+
     public void Dispose() {
         _channel = null;
-        _overridePos = null;
         _harmony.UnpatchAll(_mod.Mod.Info.ModID);
     }
 }

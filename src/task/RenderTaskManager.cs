@@ -16,7 +16,8 @@ public sealed class RenderTaskManager {
     public int LandBlock { get; }
 
     private readonly ConcurrentQueue<long> _bufferQueue = new();
-    private readonly BlockingCollection<long> _processQueue = [];
+    private readonly BlockingCollection<long> _processQueueHigh = [];
+    private readonly BlockingCollection<long> _processQueueLow = [];
 
     private Thread? _thread;
     private bool _running;
@@ -60,14 +61,45 @@ public sealed class RenderTaskManager {
         long index = Mathf.AsLong(regionX, regionZ);
 
         // ensure this region hasn't already been queued up
-        if (_bufferQueue.Contains(index) || _processQueue.Contains(index)) {
+        bool inHigh = _processQueueHigh.Contains(index);
+        bool inLow = _processQueueLow.Contains(index);
+
+        if (_bufferQueue.Contains(index) || inHigh || inLow) {
             return;
         }
 
         // queue it up to the buffer, so it doesn't get process immediately
         _bufferQueue.Enqueue(index);
 
-        Logger.Debug($"Queueing region {regionX},{regionZ} (buffer: {_bufferQueue.Count} process:{_processQueue.Count})");
+        Logger.Debug($"Queueing region {regionX},{regionZ} (buffer: {_bufferQueue.Count} high:{_processQueueHigh.Count} low:{_processQueueLow.Count})");
+    }
+
+    public void QueueAll() {
+        if (_stopped) {
+            return;
+        }
+
+        HashSet<long> existing = [.. _bufferQueue];
+        foreach (long region in _processQueueHigh) {
+            existing.Add(region);
+        }
+
+        foreach (long region in _processQueueLow) {
+            existing.Add(region);
+        }
+
+        int count = 0;
+        foreach (long index in ChunkLoader.GetAllMapRegionPositions().Select(pos => Mathf.AsLong(pos.X, pos.Z))) {
+            if (existing.Contains(index)) {
+                continue;
+            }
+
+            _bufferQueue.Enqueue(index);
+            count++;
+        }
+
+        Logger.Info($"Queued {count} regions for full render.");
+        ProcessQueue();
     }
 
     public void ProcessQueue() {
@@ -82,13 +114,14 @@ public sealed class RenderTaskManager {
             return;
         }
 
-        // pass all regions from buffer queue to the process queue
+        // pass all regions from buffer queue to the High priority process queue
+        // (Buffer implies recent event, so likely high priority)
         while (_bufferQueue.TryDequeue(out long region)) {
-            _processQueue.Add(region);
+            _processQueueHigh.Add(region);
         }
 
-        if (_processQueue.Count > 0) {
-            Logger.Debug($"ProcessQueue moved items. Processing {_processQueue.Count} regions...");
+        if (_processQueueHigh.Count > 0 || _processQueueLow.Count > 0) {
+            Logger.Debug($"ProcessQueue moved items. High: {_processQueueHigh.Count}, Low: {_processQueueLow.Count}");
         }
 
         if (_running) {
@@ -100,19 +133,15 @@ public sealed class RenderTaskManager {
 
         (_thread = new Thread(_ => {
             try {
+                BlockingCollection<long>[] queues = [_processQueueHigh, _processQueueLow];
                 while (_running) {
-                    // wait until we have a region to process
-                    long region = _processQueue.Take();
+                    int queueIndex = BlockingCollection<long>.TakeFromAny(queues, out long region);
 
-                    long start = DateTimeOffset.Now.ToUnixTimeMilliseconds();
+                    if (queueIndex == 1 && _processQueueHigh.TryTake(out long highPriorityRegion)) {
+                        ProcessRegion(highPriorityRegion);
+                    }
 
-                    int regionX = Mathf.LongToX(region);
-                    int regionZ = Mathf.LongToZ(region);
-
-                    RenderTask.ScanRegion(regionX, regionZ);
-
-                    long end = DateTimeOffset.Now.ToUnixTimeMilliseconds();
-                    Logger.Debug($"Region {regionX},{regionZ} finished ({end - start}ms) - Regions remaining: {_processQueue.Count}");
+                    ProcessRegion(region);
                 }
             } catch (Exception) {
                 // ignore
@@ -120,6 +149,18 @@ public sealed class RenderTaskManager {
 
             _running = false;
         })).Start();
+    }
+
+    private void ProcessRegion(long region) {
+        long start = DateTimeOffset.Now.ToUnixTimeMilliseconds();
+
+        int regionX = Mathf.LongToX(region);
+        int regionZ = Mathf.LongToZ(region);
+
+        RenderTask.ScanRegion(regionX, regionZ);
+
+        long end = DateTimeOffset.Now.ToUnixTimeMilliseconds();
+        Logger.Debug($"Region {regionX},{regionZ} finished ({end - start}ms) - Remaining High: {_processQueueHigh.Count}, Low: {_processQueueLow.Count}");
     }
 
     public void Dispose() {
@@ -131,8 +172,10 @@ public sealed class RenderTaskManager {
         _thread = null;
 
         _bufferQueue.Clear();
-        while (_processQueue.TryTake(out _)) {
-        }
+        _bufferQueue.Clear();
+        while (_processQueueHigh.TryTake(out _)) { }
+
+        while (_processQueueLow.TryTake(out _)) { }
 
         if (cancelled) {
             Logger.Warn("Render task cancelled");
@@ -144,7 +187,5 @@ public sealed class RenderTaskManager {
         ChunkLoader.Dispose();
     }
 
-    public (int, int) GetCounts() {
-        return (_bufferQueue.Count, _processQueue.Count);
-    }
+    public (int, int) GetCounts() => (_bufferQueue.Count, _processQueueHigh.Count + _processQueueLow.Count);
 }
