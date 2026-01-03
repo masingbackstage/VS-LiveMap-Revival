@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 No unreleased changes yet.
 
+## [0.1.8] - 2026-01-03
+
+### Features
+- Add support for Cartographer's shared waypoint layer ([860c747](https://github.com/mja00/VS-LiveMap-Revival/commit/860c747)) #41
+- Show mod version in the frontend ([f28316e](https://github.com/mja00/VS-LiveMap-Revival/commit/f28316e))
+- Add basic webserver cache ([f715a7f](https://github.com/mja00/VS-LiveMap-Revival/commit/f715a7f)) #39
+
+### Refactor
+- Extract from LiveMap.cs ([3b96c29](https://github.com/mja00/VS-LiveMap-Revival/commit/3b96c29)) #40
+
+### Chores
+- Bump to 0.1.8 ([6ca6dbd](https://github.com/mja00/VS-LiveMap-Revival/commit/6ca6dbd))
+
 ## [0.1.7] - 2026-01-03
 
 ### Features
