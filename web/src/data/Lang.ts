@@ -32,24 +32,24 @@ export class Lang {
 		this._players = lang?.players;
 		this._renderers = lang?.renderers;
 		this._copy = lang?.copy;
-		this._copyAlt = lang?.copyAlt;
+		this._copyAlt = lang?.['copy-alt'] ?? lang?.copyAlt;
 		this._paste = lang?.paste;
-		this._pasteAlt = lang?.pasteAlt;
+		this._pasteAlt = lang?.['paste-alt'] ?? lang?.pasteAlt;
 		this._share = lang?.share;
-		this._shareAlt = lang?.shareAlt;
+		this._shareAlt = lang?.['share-alt'] ?? lang?.shareAlt;
 		this._center = lang?.center;
-		this._centerAlt = lang?.centerAlt;
-		this._notifCopy = lang?.notifCopy;
-		this._notifCopyFailed = lang?.notifCopyFailed;
-		this._notifPaste = lang?.notifPaste;
-		this._notifPasteFailed = lang?.notifPasteFailed;
-		this._notifPasteInvalid = lang?.notifPasteInvalid;
-		this._notifShare = lang?.notifShare;
-		this._notifShareFailed = lang?.notifShareFailed;
-		this._notifCenter = lang?.notifCenter;
+		this._centerAlt = lang?.['center-alt'] ?? lang?.centerAlt;
+		this._notifCopy = lang?.['notif-copy'] ?? lang?.notifCopy;
+		this._notifCopyFailed = lang?.['notif-copy-failed'] ?? lang?.notifCopyFailed;
+		this._notifPaste = lang?.['notif-paste'] ?? lang?.notifPaste;
+		this._notifPasteFailed = lang?.['notif-paste-failed'] ?? lang?.notifPasteFailed;
+		this._notifPasteInvalid = lang?.['notif-paste-invalid'] ?? lang?.notifPasteInvalid;
+		this._notifShare = lang?.['notif-share'] ?? lang?.notifShare;
+		this._notifShareFailed = lang?.['notif-share-failed'] ?? lang?.notifShareFailed;
+		this._notifCenter = lang?.['notif-center'] ?? lang?.notifCenter;
 		this._avatar = lang?.avatar;
-		this._avatarAlt = lang?.avatarAlt;
-		this._shareTitle = lang?.shareTitle;
+		this._avatarAlt = lang?.['avatar-alt'] ?? lang?.avatarAlt;
+		this._shareTitle = lang?.['share-title'] ?? lang?.shareTitle;
 	}
 
 	get(key: string): string {
