@@ -47,6 +47,10 @@ export class SidebarControl {
 		this._dom.append(this.renderersControl.dom);
 		this._dom.append(this._livemap.playersLayer.dom);
 
+		// add version in bottom right
+		const versionElement: HTMLElement = L.DomUtil.create('div', 'version', this._dom);
+		versionElement.textContent = `v${this._livemap.settings.modVersion}`;
+
 		this._dom.addEventListener('click', (): void => {
 			// todo followPlayerMarker(null)
 		});

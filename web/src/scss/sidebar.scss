@@ -195,4 +195,15 @@ aside {
       }
     }
   }
+
+  .version {
+    margin-top: auto;
+    align-self: flex-end;
+    padding: 8px 15px;
+    font-size: 0.75rem;
+    font-weight: 400;
+    opacity: 0.6;
+    color: var(--text-color);
+    text-align: right;
+  }
 }

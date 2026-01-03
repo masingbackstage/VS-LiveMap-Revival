@@ -18,6 +18,7 @@ export class Settings {
 	private readonly _renderers: Renderer[];
 	private readonly _ui: Ui;
 	private readonly _lang: Lang;
+	private readonly _modVersion: string;
 
 	constructor(json: Settings) {
 		this._friendlyUrls = json.friendlyUrls ?? true;
@@ -33,6 +34,7 @@ export class Settings {
 		this._renderers = (json.renderers ?? []).map((renderer: any) => new Renderer(renderer));
 		this._ui = json.ui ? new Ui(json.ui) : new Ui();
 		this._lang = new Lang(json.lang);
+		this._modVersion = json.modVersion ?? 'unknown';
 	}
 
 	get friendlyUrls(): boolean {
@@ -81,5 +83,9 @@ export class Settings {
 
 	get lang(): Lang {
 		return this._lang;
+	}
+
+	get modVersion(): string {
+		return this._modVersion;
 	}
 }

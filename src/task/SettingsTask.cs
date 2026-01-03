@@ -77,6 +77,7 @@ public sealed class SettingsTask(LiveMap server) : AsyncTask(server) {
             { "zoom-in", "lang.zoom-in".ToLang() },
             { "zoom-out", "lang.zoom-out".ToLang() }
         });
+        dict.TryAdd("modVersion", _server.ModVersion);
 
         try {
             string json = JsonConvert.SerializeObject(dict);

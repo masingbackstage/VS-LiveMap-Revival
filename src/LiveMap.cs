@@ -54,6 +54,8 @@ public sealed class LiveMap {
 
     public string ModId => _mod.Mod.Info.ModID;
 
+    public string ModVersion => _mod.Mod.Info.Version;
+
     public ConfigManager ConfigManager { get; }
 
     public Config Config => ConfigManager.Config;
