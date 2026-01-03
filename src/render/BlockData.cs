@@ -12,18 +12,14 @@ public class BlockData {
         return _data.GetValue(Index(x, z)) as Data;
     }
 
-    public void Set(int x, int z, Data data) {
-        _data[Index(x, z)] = data;
-    }
+    public void Set(int x, int z, Data data) => _data[Index(x, z)] = data;
 
-    private static int Index(int x, int z) {
-        return ((z & 511) * 512) + (x & 511);
-    }
+    private static int Index(int x, int z) => ((z & 511) * 512) + (x & 511);
 
     public class Data(int y, int top, int under) {
+        public Dictionary<string, object?> Custom = [];
         public int Y { get; } = y;
         public int Top { get; } = top;
         public int Under { get; } = under;
-        public Dictionary<string, object?> Custom = [];
     }
 }

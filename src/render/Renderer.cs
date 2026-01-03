@@ -5,21 +5,14 @@ using Vintagestory.Common.Database;
 namespace livemap.render;
 
 public abstract class Renderer(string id) : Keyed {
+    public TileImage? TileImage { get; set; }
     public string Id { get; } = id;
 
-    public TileImage? TileImage { get; set; }
+    public virtual void AllocateImage(int regionX, int regionZ) => TileImage = new TileImage(regionX, regionZ);
 
-    public virtual void AllocateImage(int regionX, int regionZ) {
-        TileImage = new TileImage(regionX, regionZ);
-    }
+    public virtual void SaveImage() => TileImage?.Save(Id);
 
-    public virtual void SaveImage() {
-        TileImage?.Save(Id);
-    }
-
-    public virtual void CalculateShadows() {
-        TileImage?.CalculateShadows();
-    }
+    public virtual void CalculateShadows() => TileImage?.CalculateShadows();
 
     public virtual void ScanChunkColumn(ChunkPos chunkPos, BlockData blockData) {
     }
@@ -59,7 +52,5 @@ public abstract class Renderer(string id) : Keyed {
         };
     }
 
-    public virtual void Dispose() {
-        TileImage?.Dispose();
-    }
+    public virtual void Dispose() => TileImage?.Dispose();
 }

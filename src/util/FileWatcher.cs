@@ -3,10 +3,8 @@ using Vintagestory.API.Config;
 namespace livemap.util;
 
 public class FileWatcher {
-    private readonly FileSystemWatcher _watcher;
     private readonly LiveMap _server;
-
-    public bool IgnoreChanges { get; set; }
+    private readonly FileSystemWatcher _watcher;
 
     private bool _queued;
 
@@ -22,9 +20,9 @@ public class FileWatcher {
         _watcher.Error += Error;
     }
 
-    private void Changed(object sender, FileSystemEventArgs e) {
-        QueueReload(true);
-    }
+    public bool IgnoreChanges { get; set; }
+
+    private void Changed(object sender, FileSystemEventArgs e) => QueueReload(true);
 
     private void Error(object sender, ErrorEventArgs e) {
         Logger.Error(e.GetException().ToString());
@@ -32,7 +30,7 @@ public class FileWatcher {
     }
 
     /// <summary>
-    /// My workaround for <a href='https://github.com/dotnet/runtime/issues/24079'>dotnet#24079</a>.
+    ///     My workaround for <a href='https://github.com/dotnet/runtime/issues/24079'>dotnet#24079</a>.
     /// </summary>
     private void QueueReload(bool changed = false) {
         // check if already queued for reload

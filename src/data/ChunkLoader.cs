@@ -11,9 +11,9 @@ using Vintagestory.Server;
 namespace livemap.data;
 
 public class ChunkLoader {
+    private readonly ChunkDataPool _chunkDataPool;
     private readonly ServerMain _server;
     private readonly SqliteConnection _sqliteConn;
-    private readonly ChunkDataPool _chunkDataPool;
 
     public ChunkLoader(ICoreServerAPI api) {
         _server = (api.World as ServerMain)!;
@@ -46,9 +46,7 @@ public class ChunkLoader {
         return positions;
     }
 
-    public IEnumerable<ChunkPos> GetAllMapChunkPositions() {
-        return GetAllMapPositions("chunk");
-    }
+    public IEnumerable<ChunkPos> GetAllMapChunkPositions() => GetAllMapPositions("chunk");
 
     private IEnumerable<ChunkPos> GetAllMapPositions(string type) {
         using SqliteCommand sqlite = _sqliteConn.CreateCommand();
@@ -56,7 +54,7 @@ public class ChunkLoader {
         using SqliteDataReader reader = sqlite.ExecuteReader();
 
         // Materialize to a list
-        var positions = new List<ChunkPos>();
+        List<ChunkPos> positions = new();
         while (reader.Read()) {
             positions.Add(ChunkPos.FromChunkIndex_saveGamev2((ulong)(long)reader["position"]));
         }

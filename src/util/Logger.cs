@@ -3,13 +3,9 @@ using Vintagestory.API.Common;
 namespace livemap.util;
 
 public abstract class Logger {
-    private static string Format(string message) {
-        return $"[LiveMap] {message}";
-    }
+    private static string Format(string message) => $"[LiveMap] {message}";
 
-    private static ILogger Log() {
-        return LiveMap.Api.Sapi.Logger;
-    }
+    private static ILogger Log() => LiveMap.Api.Sapi.Logger;
 
     public static void Debug(string message) {
         if (LiveMap.Api.Config.DebugMode) {
@@ -17,15 +13,9 @@ public abstract class Logger {
         }
     }
 
-    public static void Info(string message) {
-        Log().Event(Format(message));
-    }
+    public static void Info(string message) => Log().Event(Format(message));
 
-    public static void Warn(string message) {
-        Log().Warning(Format(message));
-    }
+    public static void Warn(string message) => Log().Warning(Format(message));
 
-    public static void Error(string message) {
-        Log().Error(Format(message));
-    }
+    public static void Error(string message) => Log().Error(Format(message));
 }

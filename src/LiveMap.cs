@@ -15,34 +15,14 @@ using Vintagestory.API.Server;
 namespace livemap;
 
 public sealed class LiveMap {
-    public static LiveMap Api { get; private set; } = null!;
-
-    public ICoreServerAPI Sapi { get; }
-
-    public string ModId => _mod.Mod.Info.ModID;
-
-    public Config Config { get; private set; } = null!;
-
-    public Colormap Colormap { get; }
-    public SepiaColors SepiaColors { get; }
-
-    public CommandHandler CommandHandler { get; }
-
-    public LayerRegistry LayerRegistry { get; }
-    public RendererRegistry RendererRegistry { get; }
-
-    public AsyncTaskManager? AsyncTaskManager { get; private set; }
-    public RenderTaskManager? RenderTaskManager { get; private set; }
-
-    public WebServer? WebServer { get; }
-
-    private readonly LiveMapMod _mod;
+    private readonly ColormapReceiver _colormapReceiver;
     private readonly FileWatcher _configFileWatcher;
     private readonly long _gameTickTaskId;
-    private readonly ColormapReceiver _colormapReceiver;
-    private int _lastMonth = -1;
+
+    private readonly LiveMapMod _mod;
 
     private IServerNetworkChannel? _channel;
+    private int _lastMonth = -1;
 
     public LiveMap(LiveMapMod mod, ICoreServerAPI api) {
         Api = this;
@@ -93,6 +73,27 @@ public sealed class LiveMap {
             .SetMessageHandler<ColormapChunkPacket>(_colormapReceiver.ReceiveChunk);
     }
 
+    public static LiveMap Api { get; private set; } = null!;
+
+    public ICoreServerAPI Sapi { get; }
+
+    public string ModId => _mod.Mod.Info.ModID;
+
+    public Config Config { get; private set; } = null!;
+
+    public Colormap Colormap { get; }
+    public SepiaColors SepiaColors { get; }
+
+    public CommandHandler CommandHandler { get; }
+
+    public LayerRegistry LayerRegistry { get; }
+    public RendererRegistry RendererRegistry { get; }
+
+    public AsyncTaskManager? AsyncTaskManager { get; private set; }
+    public RenderTaskManager? RenderTaskManager { get; private set; }
+
+    public WebServer? WebServer { get; }
+
     public void Reload() {
         AsyncTaskManager?.Dispose();
         AsyncTaskManager = null;
@@ -109,9 +110,7 @@ public sealed class LiveMap {
         RenderTaskManager = new RenderTaskManager(this);
     }
 
-    public void LoadConfig() {
-        Config = Sapi.LoadModConfig<Config>($"{ModId}.json") ?? new Config();
-    }
+    public void LoadConfig() => Config = Sapi.LoadModConfig<Config>($"{ModId}.json") ?? new Config();
 
     public void SaveConfig() {
         _configFileWatcher.IgnoreChanges = true;
@@ -124,9 +123,7 @@ public sealed class LiveMap {
         Sapi.Event.RegisterCallback(_ => _configFileWatcher.IgnoreChanges = false, 100);
     }
 
-    public void SendPacket<T>(T packet, IPlayer? receiver = null) {
-        _channel?.SendPacket(packet, receiver as IServerPlayer);
-    }
+    public void SendPacket<T>(T packet, IPlayer? receiver = null) => _channel?.SendPacket(packet, receiver as IServerPlayer);
 
     private void OnChunkDirty(Vec3i chunkCoord, IWorldChunk chunk, EnumChunkDirtyReason reason) {
         // queue it up, it will process when the game saves

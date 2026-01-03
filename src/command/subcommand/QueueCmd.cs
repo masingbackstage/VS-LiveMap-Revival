@@ -1,6 +1,5 @@
 using livemap.util;
 using Vintagestory.API.Common;
-using Vintagestory.API.Config;
 
 namespace livemap.command.subcommand;
 

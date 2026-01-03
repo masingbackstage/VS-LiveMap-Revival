@@ -19,10 +19,7 @@ public class Traders {
         Pane = "traders"
     };
 
-    public TooltipOptions? Tooltip { get; set; } = new() {
-        Direction = "top",
-        Content = "{0}<br>{1}"
-    };
+    public TooltipOptions? Tooltip { get; set; } = new() { Direction = "top", Content = "{0}<br>{1}" };
 
     public PopupOptions? Popup { get; set; }
 

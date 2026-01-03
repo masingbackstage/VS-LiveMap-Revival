@@ -18,15 +18,15 @@ public sealed class LiveMapClient {
     [ThreadStatic] private static BlockPos? _overridePos;
     [ThreadStatic] private static float? _overrideMonth;
 
-    private readonly LiveMapMod _mod;
-    private readonly ICoreClientAPI _api;
-    private readonly ILogger _logger;
-    private readonly Harmony _harmony;
-
-    private IClientNetworkChannel? _channel;
-
     // Lock object for thread-safe patching
     private static readonly object _patchLock = new();
+    private readonly ICoreClientAPI _api;
+    private readonly Harmony _harmony;
+    private readonly ILogger _logger;
+
+    private readonly LiveMapMod _mod;
+
+    private IClientNetworkChannel? _channel;
     private bool _patched;
 
     public LiveMapClient(LiveMapMod mod, ICoreClientAPI api) {
@@ -113,7 +113,7 @@ public sealed class LiveMapClient {
 
                 MethodInfo? yearRelGetter = AccessTools.PropertyGetter(calendarType, "YearRel");
                 if (yearRelGetter != null) {
-                    _harmony.Patch(yearRelGetter, prefix: new HarmonyMethod(GetType(), nameof(PreYearRel)));
+                    _harmony.Patch(yearRelGetter, new HarmonyMethod(GetType(), nameof(PreYearRel)));
                     _logger.Event("[LiveMap] Patched YearRel successfully");
                 } else {
                     _logger.Warning("[LiveMap] Could not find YearRel getter on GameCalendar");

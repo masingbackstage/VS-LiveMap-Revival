@@ -6,10 +6,9 @@ using Vintagestory.API.Server;
 namespace livemap.command;
 
 public class CommandHandler {
-    private readonly LiveMap _server;
     private readonly IChatCommand _chatCommand;
     private readonly List<AbstractCommand> _commands = [];
-    public IEnumerable<AbstractCommand> Commands => _commands;
+    private readonly LiveMap _server;
 
     public CommandHandler(LiveMap server) {
         _server = server;
@@ -28,6 +27,8 @@ public class CommandHandler {
         RegisterSubCommand(new ReloadCmd(server));
         RegisterSubCommand(new StatusCmd(server));
     }
+
+    public IEnumerable<AbstractCommand> Commands => _commands;
 
     private void RegisterSubCommand(AbstractCommand command) {
         _commands.Add(command);
@@ -54,7 +55,5 @@ public class CommandHandler {
             .EndSubCommand();
     }
 
-    public void Dispose() {
-        _server.Sapi.ChatCommands.UnregisterCommand(_server.ModId);
-    }
+    public void Dispose() => _server.Sapi.ChatCommands.UnregisterCommand(_server.ModId);
 }

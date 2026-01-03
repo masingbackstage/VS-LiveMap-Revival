@@ -6,21 +6,21 @@ using Newtonsoft.Json;
 namespace livemap.data;
 
 /// <summary>
-/// Represents a 24 bit Color
+///     Represents a 24 bit Color
 /// </summary>
 [JsonConverter(typeof(ColorJsonConverter))]
 public readonly struct Color {
     private readonly uint _value;
 
     /// <summary>
-    /// Create a new Color from string
+    ///     Create a new Color from string
     /// </summary>
     /// <param name="value">the uint value of the Color (<c>"#RRGGBB"</c>)</param>
     public Color(string value) : this(Parse(value)) {
     }
 
     /// <summary>
-    /// Create a new Color from double array
+    ///     Create a new Color from double array
     /// </summary>
     /// <param name="value">the double array value of the Color (<c>"[r, g, b, a]"</c>)</param>
     public Color(double[] value) : this(
@@ -32,7 +32,7 @@ public readonly struct Color {
     }
 
     /// <summary>
-    /// Create a new Color from double values
+    ///     Create a new Color from double values
     /// </summary>
     /// <param name="r">the double value for red (0.0 - 1.0)</param>
     /// <param name="g">the double value for green (0.0 - 1.0)</param>
@@ -41,7 +41,7 @@ public readonly struct Color {
     }
 
     /// <summary>
-    /// Create a new Color from double values
+    ///     Create a new Color from double values
     /// </summary>
     /// <param name="a">the double value for alpha (0.0 - 1.0)</param>
     /// <param name="r">the double value for red (0.0 - 1.0)</param>
@@ -51,7 +51,7 @@ public readonly struct Color {
     }
 
     /// <summary>
-    /// Create a new Color from uint values
+    ///     Create a new Color from uint values
     /// </summary>
     /// <param name="r">the uint value for red (0x0 - 0xFF)</param>
     /// <param name="g">the uint value for green (0x0 - 0xFF)</param>
@@ -60,7 +60,7 @@ public readonly struct Color {
     }
 
     /// <summary>
-    /// Create a new Color from uint values
+    ///     Create a new Color from uint values
     /// </summary>
     /// <param name="a">the uint value for alpha (0x0 - 0xFF)</param>
     /// <param name="r">the uint value for red (0x0 - 0xFF)</param>
@@ -70,25 +70,27 @@ public readonly struct Color {
     }
 
     /// <summary>
-    /// Create a new Color from uint
+    ///     Create a new Color from uint
     /// </summary>
     /// <param name="value">the uint value of the Color (<c>0xRRGGBB</c>)</param>
-    public Color(uint value) => _value = value;
+    public Color(uint value) {
+        _value = value;
+    }
 
     /// <summary>
-    /// Returns the uint value of this Color
+    ///     Returns the uint value of this Color
     /// </summary>
     /// <returns>uint Color value</returns>
     public uint ToUInt() => _value;
 
     /// <summary>
-    /// Returns the string hex value of this Color
+    ///     Returns the string hex value of this Color
     /// </summary>
     /// <returns>string hex value</returns>
     public override string ToString() => ToString(true);
 
     /// <summary>
-    /// Returns the string hex value of this Color
+    ///     Returns the string hex value of this Color
     /// </summary>
     /// <returns>string hex value</returns>
     public string ToString(bool alpha) {
@@ -97,35 +99,35 @@ public readonly struct Color {
     }
 
     /// <summary>
-    /// Implicit cast string to Color
+    ///     Implicit cast string to Color
     /// </summary>
     /// <param name="value">the string to cast</param>
     /// <returns>Color parsed from string</returns>
     public static implicit operator Color(string value) => new(value);
 
     /// <summary>
-    /// Implicit cast uint to Color
+    ///     Implicit cast uint to Color
     /// </summary>
     /// <param name="value">the uint to cast</param>
     /// <returns>Color parsed from uint</returns>
     public static implicit operator Color(uint value) => new(value);
 
     /// <summary>
-    /// Implicit cast Color to string
+    ///     Implicit cast Color to string
     /// </summary>
     /// <param name="color">the Color to cast</param>
     /// <returns>string representation of this Color in the format of <c>"#RRGGBB"</c></returns>
     public static implicit operator string(Color color) => color.ToString();
 
     /// <summary>
-    /// Implicit cast Color to uint
+    ///     Implicit cast Color to uint
     /// </summary>
     /// <param name="color">the Color to cast</param>
     /// <returns>uint representation of this Color in the format of <c>0xRRGGBB</c></returns>
     public static implicit operator uint(Color color) => color._value;
 
     /// <summary>
-    /// Parse a string representation of a Color into a uint value
+    ///     Parse a string representation of a Color into a uint value
     /// </summary>
     /// <param name="value"></param>
     /// <returns>Color parsed from string</returns>
@@ -145,25 +147,15 @@ public readonly struct Color {
         return uint.Parse(lastSix, NumberStyles.HexNumber);
     }
 
-    public uint Alpha() {
-        return _value >> 24 & 0xFF;
-    }
+    public uint Alpha() => (_value >> 24) & 0xFF;
 
-    public uint Red() {
-        return _value >> 16 & 0xFF;
-    }
+    public uint Red() => (_value >> 16) & 0xFF;
 
-    public uint Green() {
-        return _value >> 8 & 0xFF;
-    }
+    public uint Green() => (_value >> 8) & 0xFF;
 
-    public uint Blue() {
-        return _value & 0xFF;
-    }
+    public uint Blue() => _value & 0xFF;
 
-    public Color Alpha(uint alpha) {
-        return (alpha << 24) | (_value & 0xFFFFFF);
-    }
+    public Color Alpha(uint alpha) => (alpha << 24) | (_value & 0xFFFFFF);
 
     public static Color Reverse(Color color) {
         return color.Alpha() |
@@ -177,7 +169,7 @@ public readonly struct Color {
         return (color0.Alpha() << 24) |
                ((uint)((color0.Red() * ratio) + (color1.Red() * iRatio)) << 16) |
                ((uint)((color0.Green() * ratio) + (color1.Green() * iRatio)) << 8) |
-               ((uint)((color0.Blue() * ratio) + (color1.Blue() * iRatio)));
+               (uint)((color0.Blue() * ratio) + (color1.Blue() * iRatio));
     }
 
     public static Color LerpHsb(Color color0, Color color1, float delta) {

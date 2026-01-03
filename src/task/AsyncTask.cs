@@ -1,8 +1,8 @@
 namespace livemap.task;
 
 public abstract class AsyncTask(LiveMap server) {
-    protected readonly LiveMap _server = server;
     private readonly CancellationTokenSource _cts = new();
+    protected readonly LiveMap _server = server;
 
     private volatile bool _running;
 
@@ -23,7 +23,5 @@ public abstract class AsyncTask(LiveMap server) {
 
     protected abstract Task TickAsync(CancellationToken cancellationToken);
 
-    public virtual void Dispose() {
-        _cts.Cancel();
-    }
+    public virtual void Dispose() => _cts.Cancel();
 }

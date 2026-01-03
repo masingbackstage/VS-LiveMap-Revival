@@ -6,18 +6,17 @@ using Vintagestory.API.Config;
 namespace livemap.util;
 
 public abstract class Files {
+    public static readonly JsonSerializerSettings JsonSerializerMinifiedSettings = new() { Formatting = Formatting.None, NullValueHandling = NullValueHandling.Ignore, DefaultValueHandling = DefaultValueHandling.Ignore, ContractResolver = new CamelCasePropertyNamesContractResolver() };
+
+    public static readonly JsonSerializerSettings JsonSerializerPrettySettings = new() { Formatting = Formatting.Indented, NullValueHandling = NullValueHandling.Ignore, DefaultValueHandling = DefaultValueHandling.Include, ContractResolver = new CamelCasePropertyNamesContractResolver() };
     public static string SavegameIdentifier { get; internal set; } = null!;
     public static string DataDir => Path.Combine(GamePaths.DataPath, "ModData", SavegameIdentifier, "LiveMap");
     public static string ColormapFile => Path.Combine(DataDir, "colormap.json");
-    public static string GetColormapFile(int month) => Path.Combine(DataDir, $"colormap-{month}.json");
     public static string WebDir => Path.Combine(DataDir, "web");
     public static string JsonDir => Path.Combine(WebDir, "data");
     public static string MarkerDir => Path.Combine(JsonDir, "markers");
     public static string TilesDir => Path.Combine(WebDir, "tiles");
-
-    public static readonly JsonSerializerSettings JsonSerializerMinifiedSettings = new() { Formatting = Formatting.None, NullValueHandling = NullValueHandling.Ignore, DefaultValueHandling = DefaultValueHandling.Ignore, ContractResolver = new CamelCasePropertyNamesContractResolver() };
-
-    public static readonly JsonSerializerSettings JsonSerializerPrettySettings = new() { Formatting = Formatting.Indented, NullValueHandling = NullValueHandling.Ignore, DefaultValueHandling = DefaultValueHandling.Include, ContractResolver = new CamelCasePropertyNamesContractResolver() };
+    public static string GetColormapFile(int month) => Path.Combine(DataDir, $"colormap-{month}.json");
 
     internal static void ExtractWebFiles(LiveMap server) {
         GamePaths.EnsurePathExists(DataDir);

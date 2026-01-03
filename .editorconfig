@@ -15,6 +15,22 @@ indent_style = space
 
 [web/**]
 indent_style = tab
+generated_code = true
+
+[resources/**]
+generated_code = true
+
+[docs/**]
+generated_code = true
+
+[runData/**]
+generated_code = true
+
+[runDataClient/**]
+generated_code = true
+
+[clientLogs/**]
+generated_code = true
 
 [{*.html,*.js,*.json,*.css,*.scss,*.yml}]
 indent_size = 2

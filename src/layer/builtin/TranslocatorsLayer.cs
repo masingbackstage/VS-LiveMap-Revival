@@ -7,6 +7,7 @@ using Vintagestory.API.Util;
 namespace livemap.layer.builtin;
 
 public class TranslocatorsLayer() : Layer("translocators", "lang.translocators".ToLang()) {
+    private readonly ConcurrentDictionary<ulong, HashSet<Translocator>> _knownTranslocators = new();
     public override int? Interval => Config.UpdateInterval;
 
     public override bool? Hidden => !Config.DefaultShowLayer;
@@ -27,11 +28,7 @@ public class TranslocatorsLayer() : Layer("translocators", "lang.translocators".
 
     private static Translocators Config => LiveMap.Api.Config.Layers.Translocators;
 
-    private readonly ConcurrentDictionary<ulong, HashSet<Translocator>> _knownTranslocators = new();
-
-    public void SetTranslocators(ulong chunkIndex, HashSet<Translocator> translocator) {
-        _knownTranslocators[chunkIndex] = translocator;
-    }
+    public void SetTranslocators(ulong chunkIndex, HashSet<Translocator> translocator) => _knownTranslocators[chunkIndex] = translocator;
 
     public class Translocator {
         // TODO: Actually implement this

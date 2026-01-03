@@ -1,5 +1,4 @@
 using System.Collections.Concurrent;
-using livemap.data;
 using livemap.util;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -8,17 +7,18 @@ using Vintagestory.API.Server;
 namespace livemap.network;
 
 /// <summary>
-/// Manages reassembly of chunked colormap transfers from clients.
+///     Manages reassembly of chunked colormap transfers from clients.
 /// </summary>
 public sealed class ColormapReceiver : IDisposable {
     /// <summary>
-    /// Timeout in milliseconds for incomplete transfers.
+    ///     Timeout in milliseconds for incomplete transfers.
     /// </summary>
     private const int TransferTimeoutMs = 60000; // 60 seconds
 
-    private readonly LiveMap _server;
     private readonly ConcurrentDictionary<string, ChunkedTransfer> _activeTransfers = new();
     private readonly long _cleanupTaskId;
+
+    private readonly LiveMap _server;
 
     public ColormapReceiver(LiveMap server) {
         _server = server;
@@ -26,8 +26,13 @@ public sealed class ColormapReceiver : IDisposable {
         _cleanupTaskId = server.Sapi.Event.RegisterGameTickListener(_ => CleanupStaleTransfers(), 30000);
     }
 
+    public void Dispose() {
+        _server.Sapi.Event.UnregisterGameTickListener(_cleanupTaskId);
+        _activeTransfers.Clear();
+    }
+
     /// <summary>
-    /// Handles an incoming chunk packet from a player.
+    ///     Handles an incoming chunk packet from a player.
     /// </summary>
     public void ReceiveChunk(IServerPlayer player, ColormapChunkPacket chunk) {
         if (!player.HasPrivilege(Privilege.root)) {
@@ -145,11 +150,6 @@ public sealed class ColormapReceiver : IDisposable {
                 Logger.Warn("colormap.timeout".ToLang(transfer.PlayerName, transfer.ChunksReceived, transfer.TotalChunks));
             }
         }
-    }
-
-    public void Dispose() {
-        _server.Sapi.Event.UnregisterGameTickListener(_cleanupTaskId);
-        _activeTransfers.Clear();
     }
 
     private sealed class ChunkedTransfer {

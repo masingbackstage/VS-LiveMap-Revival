@@ -8,10 +8,18 @@ using Vintagestory.API.Common;
 namespace livemap.data;
 
 public sealed class Colormap {
-    private readonly Dictionary<string, uint[]> _colorsByName = [];
-    private readonly Dictionary<int, uint[]> _colorsById = [];
-    private readonly object _lock = new(); // Internal state lock
     private static readonly object _globalFileLock = new(); // File system lock for all Colormap instances
+    private readonly Dictionary<int, uint[]> _colorsById = [];
+    private readonly Dictionary<string, uint[]> _colorsByName = [];
+    private readonly object _lock = new(); // Internal state lock
+
+    public int Count {
+        get {
+            lock (_lock) {
+                return _colorsById.Count;
+            }
+        }
+    }
 
     public void Add(string block, uint[] toAdd) {
         lock (_lock) {
@@ -22,14 +30,6 @@ public sealed class Colormap {
     public bool TryGet(int id, [MaybeNullWhen(false)] out uint[] colors) {
         lock (_lock) {
             return _colorsById.TryGetValue(id, out colors);
-        }
-    }
-
-    public int Count {
-        get {
-            lock (_lock) {
-                return _colorsById.Count;
-            }
         }
     }
 

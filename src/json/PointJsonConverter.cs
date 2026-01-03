@@ -5,10 +5,10 @@ using Newtonsoft.Json.Linq;
 namespace livemap.json;
 
 /// <summary>
-/// Converter for array to/from point
+///     Converter for array to/from point
 /// </summary>
 public class PointJsonConverter : JsonConverter {
-    /// <inheritdoc/>
+    /// <inheritdoc />
     public override void WriteJson(JsonWriter writer, object? value, JsonSerializer serializer) {
         if (value is not Point point) {
             return;
@@ -21,7 +21,7 @@ public class PointJsonConverter : JsonConverter {
         writer.WriteEndArray();
     }
 
-    /// <inheritdoc/>
+    /// <inheritdoc />
     public override object? ReadJson(JsonReader reader, Type type, object? existingValue, JsonSerializer serializer) {
         if (reader.TokenType == JsonToken.StartObject) {
             return JToken.Load(reader).ToObject<Point>();
@@ -34,8 +34,6 @@ public class PointJsonConverter : JsonConverter {
         return (Point)JToken.Load(reader).ToObject<double[]>()!;
     }
 
-    /// <inheritdoc/>
-    public override bool CanConvert(Type type) {
-        return type.IsArray && type.GetElementType() == typeof(double);
-    }
+    /// <inheritdoc />
+    public override bool CanConvert(Type type) => type.IsArray && type.GetElementType() == typeof(double);
 }

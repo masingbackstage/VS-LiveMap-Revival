@@ -1,9 +1,10 @@
 using System.Net;
+using System.Net.Sockets;
 using System.Text.RegularExpressions;
 using GenHTTP.Api.Content;
+using GenHTTP.Api.Content.IO;
 using GenHTTP.Api.Infrastructure;
 using GenHTTP.Api.Protocol;
-using GenHTTP.Engine;
 using GenHTTP.Engine.Internal;
 using GenHTTP.Modules.IO;
 using livemap.util;
@@ -11,9 +12,9 @@ using livemap.util;
 namespace livemap.httpd;
 
 public partial class WebServer(LiveMap server) {
-    private IServerHost? _server;
-    private volatile bool _running;
     private readonly LiveMap _serverContext = server;
+    private volatile bool _running;
+    private IServerHost? _server;
 
     [GeneratedRegex(@"^(.*\/)?(.+)\/([+-]?\d+)\/([+-]?\d+)\/([+-]?\d+)(\/.*)?")]
     private static partial Regex FriendlyUrlRegex();
@@ -42,7 +43,7 @@ public partial class WebServer(LiveMap server) {
             }
 
             // GenHTTP v10 API
-            var host = Host.Create()
+            IServerHost host = Host.Create()
                 .Handler(new FunctionalHandlerBuilder(HandleRequest));
 
             // Configure binding
@@ -51,7 +52,7 @@ public partial class WebServer(LiveMap server) {
                 Logger.Info("webserver.starting".ToLang("0.0.0.0", port));
                 LogAccessibleAddresses(port);
             } else {
-                if (IPAddress.TryParse(bindAddress, out var ip)) {
+                if (IPAddress.TryParse(bindAddress, out IPAddress? ip)) {
                     host.Bind(ip, (ushort)port);
                     Logger.Info("webserver.starting".ToLang(ip, port));
                 } else {
@@ -69,7 +70,6 @@ public partial class WebServer(LiveMap server) {
         } catch (Exception e) {
             Logger.Error("webserver.failed".ToLang(e.Message));
             _running = false;
-            return;
         }
     }
 
@@ -92,7 +92,7 @@ public partial class WebServer(LiveMap server) {
                 if (matches.Count > 0) {
                     string group6 = matches[0].Groups[6].Value;
                     if (group6.Length == 0 && !matches[0].Value.EndsWith('/')) {
-                        var original = request.Target.Path.ToString();
+                        string original = request.Target.Path.ToString();
                         return new ValueTask<IResponse?>(AddCorsHeaders(request.Respond())
                             .Header("Location", $"{original}/")
                             .Status(ResponseStatus.MovedPermanently)
@@ -124,7 +124,7 @@ public partial class WebServer(LiveMap server) {
             if (File.Exists(filePath)) {
                 string contentType = GetContentType(filePath);
 
-                var resource = Resource.FromFile(filePath).Build();
+                IResource resource = Resource.FromFile(filePath).Build();
 
                 // Calculate ETag based on last modified time
                 string? etag = null;
@@ -135,7 +135,7 @@ public partial class WebServer(LiveMap server) {
                     // ignore ETag calculation errors
                 }
 
-                var response = AddCorsHeaders(request.Respond())
+                IResponseBuilder response = AddCorsHeaders(request.Respond())
                     .Content(resource)
                     .Type(contentType)
                     .Status(ResponseStatus.Ok);
@@ -145,23 +145,23 @@ public partial class WebServer(LiveMap server) {
                 }
 
                 return new ValueTask<IResponse?>(response.Build());
-            } else {
-                string notFoundPath = Path.Combine(Files.WebDir, "404.html");
-                if (File.Exists(notFoundPath)) {
-                    var resource = Resource.FromFile(notFoundPath).Build();
-                    return new ValueTask<IResponse?>(AddCorsHeaders(request.Respond())
-                        .Content(resource)
-                        .Status(ResponseStatus.NotFound)
-                        .Type("text/html")
-                        .Build());
-                }
+            }
 
+            string notFoundPath = Path.Combine(Files.WebDir, "404.html");
+            if (File.Exists(notFoundPath)) {
+                IResource resource = Resource.FromFile(notFoundPath).Build();
                 return new ValueTask<IResponse?>(AddCorsHeaders(request.Respond())
+                    .Content(resource)
                     .Status(ResponseStatus.NotFound)
-                    .Content("404 Not Found")
-                    .Type("text/plain")
+                    .Type("text/html")
                     .Build());
             }
+
+            return new ValueTask<IResponse?>(AddCorsHeaders(request.Respond())
+                .Status(ResponseStatus.NotFound)
+                .Content("404 Not Found")
+                .Type("text/plain")
+                .Build());
         } catch (Exception e) {
             Logger.Error($"Error handling request: {e.Message}");
             return new ValueTask<IResponse?>(AddCorsHeaders(request.Respond())
@@ -179,7 +179,7 @@ public partial class WebServer(LiveMap server) {
     }
 
     private static string GetContentType(string path) {
-        var ext = Path.GetExtension(path).ToLowerInvariant();
+        string ext = Path.GetExtension(path).ToLowerInvariant();
         return ext switch {
             ".html" or ".htm" => "text/html",
             ".js" => "application/javascript",
@@ -198,29 +198,11 @@ public partial class WebServer(LiveMap server) {
         };
     }
 
-    private class FunctionalHandlerBuilder(Func<IRequest, ValueTask<IResponse?>> handler) : IHandlerBuilder {
-        private readonly Func<IRequest, ValueTask<IResponse?>> _handler = handler;
-
-        public IHandler Build() {
-            return new FunctionalHandler(_handler);
-        }
-    }
-
-    private class FunctionalHandler(Func<IRequest, ValueTask<IResponse?>> handler) : IHandler {
-        public ValueTask<IResponse?> HandleAsync(IRequest request) {
-            return handler(request);
-        }
-
-        public ValueTask PrepareAsync() {
-            return ValueTask.CompletedTask;
-        }
-    }
-
     private static void LogAccessibleAddresses(int port) {
         try {
-            var host = Dns.GetHostEntry(Dns.GetHostName());
+            IPHostEntry host = Dns.GetHostEntry(Dns.GetHostName());
             Logger.Info("webserver.ips".ToLang());
-            foreach (var ip in host.AddressList.Where(ip => ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)) {
+            foreach (IPAddress ip in host.AddressList.Where(ip => ip.AddressFamily == AddressFamily.InterNetwork)) {
                 Logger.Info($"\thttp://{ip}:{port}/");
             }
         } catch {
@@ -239,5 +221,17 @@ public partial class WebServer(LiveMap server) {
 
         _server = null;
         _running = false;
+    }
+
+    private class FunctionalHandlerBuilder(Func<IRequest, ValueTask<IResponse?>> handler) : IHandlerBuilder {
+        private readonly Func<IRequest, ValueTask<IResponse?>> _handler = handler;
+
+        public IHandler Build() => new FunctionalHandler(_handler);
+    }
+
+    private class FunctionalHandler(Func<IRequest, ValueTask<IResponse?>> handler) : IHandler {
+        public ValueTask<IResponse?> HandleAsync(IRequest request) => handler(request);
+
+        public ValueTask PrepareAsync() => ValueTask.CompletedTask;
     }
 }

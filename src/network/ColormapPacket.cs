@@ -6,9 +6,10 @@ namespace livemap.network;
 
 [ProtoContract]
 public sealed class ColormapPacket : Packet {
+    [ProtoMember(1)] public string? RawBase64String;
     public string? RawColormap;
 
-    [ProtoMember(1)] public string? RawBase64String;
+    private int _month = 1;
 
     [ProtoMember(2)]
     public int Month {
@@ -21,8 +22,6 @@ public sealed class ColormapPacket : Packet {
             _month = value;
         }
     }
-
-    private int _month = 1;
 
     public ColormapPacket Compress() {
         byte[] originalBytes = Encoding.UTF8.GetBytes(RawColormap ?? "");
@@ -57,7 +56,7 @@ public sealed class ColormapPacket : Packet {
     }
 
     /// <summary>
-    /// Splits the compressed colormap data into smaller chunks for transfer.
+    ///     Splits the compressed colormap data into smaller chunks for transfer.
     /// </summary>
     /// <param name="maxChunkSize">Maximum size of each chunk in bytes. Default is 64KB.</param>
     /// <returns>An enumerable of ColormapChunkPacket instances.</returns>

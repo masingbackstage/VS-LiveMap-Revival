@@ -51,11 +51,7 @@ public class MarkersTask(LiveMap server) : AsyncTask(server) {
             return;
         }
 
-        string markersJson = JsonConvert.SerializeObject(new Dictionary<string, List<string>> {
-            {
-                "markers", layerIds
-            }
-        });
+        string markersJson = JsonConvert.SerializeObject(new Dictionary<string, List<string>> { { "markers", layerIds } });
 
         if (cancellationToken.IsCancellationRequested) {
             return;

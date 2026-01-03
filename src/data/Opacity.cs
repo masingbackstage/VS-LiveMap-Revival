@@ -10,7 +10,9 @@ public readonly struct Opacity {
     public Opacity(double value) : this((byte)(0xFF * value)) {
     }
 
-    public Opacity(byte value) => _value = value;
+    public Opacity(byte value) {
+        _value = value;
+    }
 
     public byte ToByte() => _value;
     public double ToDouble() => Math.Round((double)_value / 0xFF, 1);

@@ -4,47 +4,16 @@ using livemap.layer.marker;
 using livemap.layer.marker.options;
 using livemap.util;
 using Newtonsoft.Json;
+using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
 namespace livemap.layer.builtin;
 
 public class TradersLayer : Layer {
-    public override int? Interval => Config.UpdateInterval;
-
-    public override bool? Hidden => !Config.DefaultShowLayer;
-
-    public override List<Marker> Markers {
-        get {
-            List<Marker> list = [];
-            _knownTraders.Values.Foreach(traders => {
-                traders.Foreach(trader => {
-                    TooltipOptions? tooltip = Config.Tooltip?.DeepCopy();
-                    if (tooltip?.Content != null) {
-                        tooltip.Content = string.Format(tooltip.Content, trader.Name, Vintagestory.API.Config.Lang.Get(trader.Type));
-                    }
-
-                    PopupOptions? popup = Config.Popup?.DeepCopy();
-                    if (popup?.Content != null) {
-                        string localizedType = Vintagestory.API.Config.Lang.Get(trader.Type);
-                        popup.Content = string.Format(popup.Content, trader.Name, localizedType);
-                    }
-
-                    list.Add(new Icon($"trader:{trader.Id}", trader.Pos.ToPoint(), Config.IconOptions) { Tooltip = tooltip, Popup = popup });
-                });
-            });
-            return list;
-        }
-    }
-
-    public override string? Css => Config.Css;
-
-    public override string Filename => Path.Combine(Files.MarkerDir, $"{Id}.json");
-
-    private static Traders Config => LiveMap.Api.Config.Layers.Traders;
+    private readonly string _knownFile;
 
     private readonly ConcurrentDictionary<ulong, HashSet<Trader>> _knownTraders;
-    private readonly string _knownFile;
 
     private bool _dirty;
 
@@ -63,6 +32,39 @@ public class TradersLayer : Layer {
 
         _knownTraders = traders ?? new ConcurrentDictionary<ulong, HashSet<Trader>>();
     }
+
+    public override int? Interval => Config.UpdateInterval;
+
+    public override bool? Hidden => !Config.DefaultShowLayer;
+
+    public override List<Marker> Markers {
+        get {
+            List<Marker> list = [];
+            _knownTraders.Values.Foreach(traders => {
+                traders.Foreach(trader => {
+                    TooltipOptions? tooltip = Config.Tooltip?.DeepCopy();
+                    if (tooltip?.Content != null) {
+                        tooltip.Content = string.Format(tooltip.Content, trader.Name, Lang.Get(trader.Type));
+                    }
+
+                    PopupOptions? popup = Config.Popup?.DeepCopy();
+                    if (popup?.Content != null) {
+                        string localizedType = Lang.Get(trader.Type);
+                        popup.Content = string.Format(popup.Content, trader.Name, localizedType);
+                    }
+
+                    list.Add(new Icon($"trader:{trader.Id}", trader.Pos.ToPoint(), Config.IconOptions) { Tooltip = tooltip, Popup = popup });
+                });
+            });
+            return list;
+        }
+    }
+
+    public override string? Css => Config.Css;
+
+    public override string Filename => Path.Combine(Files.MarkerDir, $"{Id}.json");
+
+    private static Traders Config => LiveMap.Api.Config.Layers.Traders;
 
     public void SetTraders(ulong chunkIndex, HashSet<Trader> traders) {
         if (traders.Count == 0) {
@@ -93,9 +95,9 @@ public class TradersLayer : Layer {
     }
 
     public class Trader(string type, long id, string name, Vec3i pos) {
-        public readonly string Type = type;
         public readonly long Id = id;
         public readonly string Name = name;
         public readonly Vec3i Pos = pos;
+        public readonly string Type = type;
     }
 }

@@ -9,21 +9,19 @@ public class TileType {
     public static readonly TileType Png = Register(new TileType("png", SKEncodedImageFormat.Png));
     public static readonly TileType Webp = Register(new TileType("webp", SKEncodedImageFormat.Webp));
 
-    private static TileType Register(TileType tileType) {
-        Types.Add(tileType.Type, tileType);
-        return tileType;
+    private TileType(string type, SKEncodedImageFormat format) {
+        Type = type;
+        Format = format;
     }
 
     public string Type { get; }
 
     public SKEncodedImageFormat Format { get; }
 
-    private TileType(string type, SKEncodedImageFormat format) {
-        Type = type;
-        Format = format;
+    private static TileType Register(TileType tileType) {
+        Types.Add(tileType.Type, tileType);
+        return tileType;
     }
 
-    public override string ToString() {
-        return Type;
-    }
+    public override string ToString() => Type;
 }

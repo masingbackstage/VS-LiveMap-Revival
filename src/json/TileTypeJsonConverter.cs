@@ -20,7 +20,5 @@ public class TileTypeJsonConverter : JsonConverter {
         return str == null ? null : TileType.Types.TryGetValue(str);
     }
 
-    public override bool CanConvert(Type type) {
-        return type.GetElementType() == typeof(string);
-    }
+    public override bool CanConvert(Type type) => type.GetElementType() == typeof(string);
 }

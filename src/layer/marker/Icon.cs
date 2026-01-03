@@ -5,31 +5,21 @@ using Newtonsoft.Json;
 namespace livemap.layer.marker;
 
 /// <summary>
-/// The icon marker is used to display clickable/draggable icons on the map
+///     The icon marker is used to display clickable/draggable icons on the map
 /// </summary>
 /// <remarks>
-/// This is mostly used to mark specific points in the world such as players, translocators, traders, cities, etc.<br/>
-/// You can highlight entire areas instead of just a point with the <see cref="Polygon"/>
+///     This is mostly used to mark specific points in the world such as players, translocators, traders, cities, etc.<br />
+///     You can highlight entire areas instead of just a point with the <see cref="Polygon" />
 /// </remarks>
 public class Icon : Marker {
     /// <summary>
-    /// Absolute (not relative to spawn) world coordinates for the icon's anchor
-    /// </summary>
-    [JsonProperty(Order = -1)]
-    public Point Point { get; set; }
-
-    /// <inheritdoc cref="IconOptions"/>
-    [JsonProperty(Order = 10)]
-    public new IconOptions? Options { get; set; }
-
-    /// <summary>
-    /// Create a new icon at 0,0 with a random id
+    ///     Create a new icon at 0,0 with a random id
     /// </summary>
     public Icon() : this(Guid.NewGuid().ToString(), new Point(0, 0)) {
     }
 
     /// <summary>
-    /// Create a new icon
+    ///     Create a new icon
     /// </summary>
     /// <param name="id">Unique identifying key</param>
     /// <param name="point">Absolute (not relative to spawn) world coordinates for the icon's anchor</param>
@@ -39,8 +29,16 @@ public class Icon : Marker {
         Options = options;
     }
 
-    /// <inheritdoc cref="Marker.FromJson{T}"/>
-    public static Icon FromJson(string json) {
-        return FromJson<Icon>(json);
-    }
+    /// <summary>
+    ///     Absolute (not relative to spawn) world coordinates for the icon's anchor
+    /// </summary>
+    [JsonProperty(Order = -1)]
+    public Point Point { get; set; }
+
+    /// <inheritdoc cref="IconOptions" />
+    [JsonProperty(Order = 10)]
+    public new IconOptions? Options { get; set; }
+
+    /// <inheritdoc cref="Marker.FromJson{T}" />
+    public static Icon FromJson(string json) => FromJson<Icon>(json);
 }

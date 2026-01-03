@@ -5,43 +5,6 @@ using Vintagestory.API.Datastructures;
 namespace livemap.data;
 
 public class SepiaColors {
-    public static string GetDefaultMapColorCode(EnumBlockMaterial material) {
-        return material switch {
-            EnumBlockMaterial.Soil => "land",
-            EnumBlockMaterial.Sand => "desert",
-            EnumBlockMaterial.Ore => "land",
-            EnumBlockMaterial.Gravel => "desert",
-            EnumBlockMaterial.Stone => "land",
-            EnumBlockMaterial.Leaves => "forest",
-            EnumBlockMaterial.Plant => "plant",
-            EnumBlockMaterial.Wood => "forest",
-            EnumBlockMaterial.Snow => "glacier",
-            EnumBlockMaterial.Liquid => "lake",
-            EnumBlockMaterial.Ice => "glacier",
-            EnumBlockMaterial.Lava => "lava",
-            _ => "land"
-        };
-    }
-
-    public OrderedDictionary<string, string> HexColorsByCode { get; } = new() {
-        { "ink", "#483018" },
-        { "settlement", "#856844" },
-        { "wateredge", "#483018" },
-        { "land", "#AC8858" },
-        { "desert", "#C4A468" },
-        { "forest", "#98844C" },
-        { "road", "#805030" },
-        { "plant", "#808650" },
-        { "lake", "#CCC890" },
-        { "ocean", "#CCC890" },
-        { "glacier", "#E0E0C0" }
-    };
-
-    public OrderedDictionary<string, uint> ColorsByCode { get; } = [];
-
-    public byte[] Block2Color { get; private set; }
-    public bool[] BlockIsWater { get; private set; }
-
     public SepiaColors(LiveMap server) {
         int max = server.Sapi.World.Blocks.Count;
         Block2Color = new byte[max + 1];
@@ -66,6 +29,43 @@ public class SepiaColors {
             Block2Color[block.BlockId] = (byte)ColorsByCode.IndexOfKey(colorCode);
             BlockIsWater[block.BlockId] = block.BlockMaterial == EnumBlockMaterial.Liquid || (block.BlockMaterial == EnumBlockMaterial.Ice && block.Code.Path != "glacierice");
         }
+    }
+
+    public OrderedDictionary<string, string> HexColorsByCode { get; } = new() {
+        { "ink", "#483018" },
+        { "settlement", "#856844" },
+        { "wateredge", "#483018" },
+        { "land", "#AC8858" },
+        { "desert", "#C4A468" },
+        { "forest", "#98844C" },
+        { "road", "#805030" },
+        { "plant", "#808650" },
+        { "lake", "#CCC890" },
+        { "ocean", "#CCC890" },
+        { "glacier", "#E0E0C0" }
+    };
+
+    public OrderedDictionary<string, uint> ColorsByCode { get; } = [];
+
+    public byte[] Block2Color { get; private set; }
+    public bool[] BlockIsWater { get; private set; }
+
+    public static string GetDefaultMapColorCode(EnumBlockMaterial material) {
+        return material switch {
+            EnumBlockMaterial.Soil => "land",
+            EnumBlockMaterial.Sand => "desert",
+            EnumBlockMaterial.Ore => "land",
+            EnumBlockMaterial.Gravel => "desert",
+            EnumBlockMaterial.Stone => "land",
+            EnumBlockMaterial.Leaves => "forest",
+            EnumBlockMaterial.Plant => "plant",
+            EnumBlockMaterial.Wood => "forest",
+            EnumBlockMaterial.Snow => "glacier",
+            EnumBlockMaterial.Liquid => "lake",
+            EnumBlockMaterial.Ice => "glacier",
+            EnumBlockMaterial.Lava => "lava",
+            _ => "land"
+        };
     }
 
     public void Dispose() {

@@ -40,11 +40,7 @@ public class PlayersLayer() : Layer("players", "lang.players".ToLang()) {
             return;
         }
 
-        string json = JsonConvert.SerializeObject(new Dictionary<string, object?> {
-            { "interval", Config.UpdateInterval },
-            { "hidden", !Config.DefaultShowLayer },
-            { "players", players }
-        }, Files.JsonSerializerMinifiedSettings);
+        string json = JsonConvert.SerializeObject(new Dictionary<string, object?> { { "interval", Config.UpdateInterval }, { "hidden", !Config.DefaultShowLayer }, { "players", players } }, Files.JsonSerializerMinifiedSettings);
 
         if (cancellationToken.IsCancellationRequested) {
             return;

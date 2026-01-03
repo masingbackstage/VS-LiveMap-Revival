@@ -6,24 +6,15 @@ using Vintagestory.API.Common;
 namespace livemap.task;
 
 public sealed class RenderTaskManager {
-    private readonly LiveMap _server;
-
     public readonly ChunkLoader ChunkLoader;
-    public RenderTask RenderTask { get; }
-
-    public HashSet<int> MicroBlocks { get; }
-    public HashSet<int> BlocksToIgnore { get; }
-    public int LandBlock { get; }
 
     private readonly ConcurrentQueue<long> _bufferQueue = new();
     private readonly BlockingCollection<long> _processQueueHigh = [];
     private readonly BlockingCollection<long> _processQueueLow = [];
-
-    private Thread? _thread;
-    private bool _running;
+    private readonly LiveMap _server;
     private bool _stopped;
 
-    public bool IsRunning => _running;
+    private Thread? _thread;
 
     public RenderTaskManager(LiveMap server) {
         _server = server;
@@ -51,6 +42,14 @@ public sealed class RenderTaskManager {
 
         LandBlock = server.Sapi.World.GetBlock(new AssetLocation("game", "soil-low-normal")).Id;
     }
+
+    public RenderTask RenderTask { get; }
+
+    public HashSet<int> MicroBlocks { get; }
+    public HashSet<int> BlocksToIgnore { get; }
+    public int LandBlock { get; }
+
+    public bool IsRunning { get; private set; }
 
     public void Queue(int regionX, int regionZ) {
         if (_stopped) {
@@ -124,17 +123,17 @@ public sealed class RenderTaskManager {
             Logger.Debug($"ProcessQueue moved items. High: {_processQueueHigh.Count}, Low: {_processQueueLow.Count}");
         }
 
-        if (_running) {
+        if (IsRunning) {
             // this task is still running, no need to restart it
             return;
         }
 
-        _running = true;
+        IsRunning = true;
 
         (_thread = new Thread(_ => {
             try {
                 BlockingCollection<long>[] queues = [_processQueueHigh, _processQueueLow];
-                while (_running) {
+                while (IsRunning) {
                     int queueIndex = BlockingCollection<long>.TakeFromAny(queues, out long region);
 
                     if (queueIndex == 1 && _processQueueHigh.TryTake(out long highPriorityRegion)) {
@@ -147,7 +146,7 @@ public sealed class RenderTaskManager {
                 // ignore
             }
 
-            _running = false;
+            IsRunning = false;
         })).Start();
     }
 
@@ -164,7 +163,7 @@ public sealed class RenderTaskManager {
     }
 
     public void Dispose() {
-        bool cancelled = !_stopped && _running;
+        bool cancelled = !_stopped && IsRunning;
 
         _stopped = true;
 

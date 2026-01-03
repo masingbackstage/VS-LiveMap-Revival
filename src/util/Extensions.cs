@@ -16,9 +16,7 @@ namespace livemap.util;
 public static class Extensions {
     private const BindingFlags _flags = BindingFlags.NonPublic | BindingFlags.Instance;
 
-    public static T? GetField<T>(this object obj, string name) where T : class {
-        return obj.GetType().GetField(name, _flags)?.GetValue(obj) as T;
-    }
+    public static T? GetField<T>(this object obj, string name) where T : class => obj.GetType().GetField(name, _flags)?.GetValue(obj) as T;
 
     public static void AddIfNotExists<T>(this List<T> list, T value) {
         if (!list.Contains(value)) {
@@ -26,46 +24,28 @@ public static class Extensions {
         }
     }
 
-    public static string ToLang(this string key, params object[]? args) {
-        return Lang.Get($"livemap:{key}", args);
-    }
+    public static string ToLang(this string key, params object[]? args) => Lang.Get($"livemap:{key}", args);
 
-    public static TextCommandResult CommandError(this string key, params object[]? args) {
-        return TextCommandResult.Error($"command.{key}".ToLang(args));
-    }
+    public static TextCommandResult CommandError(this string key, params object[]? args) => TextCommandResult.Error($"command.{key}".ToLang(args));
 
-    public static TextCommandResult CommandSuccess(this string key, params object[]? args) {
-        return TextCommandResult.Success($"command.{key}".ToLang(args));
-    }
+    public static TextCommandResult CommandSuccess(this string key, params object[]? args) => TextCommandResult.Success($"command.{key}".ToLang(args));
 
     public static Point GetPoint(this IPlayer player) {
         EntityPos pos = player.Entity.SidedPos;
         return new Point(pos.X, pos.Z);
     }
 
-    public static Point ToPoint(this BlockPos pos) {
-        return new Point(pos.X, pos.Z);
-    }
+    public static Point ToPoint(this BlockPos pos) => new(pos.X, pos.Z);
 
-    public static Point ToPoint(this EntityPos pos) {
-        return new Point(Math.Round(pos.X, 1), Math.Round(pos.Z, 1));
-    }
+    public static Point ToPoint(this EntityPos pos) => new(Math.Round(pos.X, 1), Math.Round(pos.Z, 1));
 
-    public static Point ToPoint(this Vec3i pos) {
-        return new Point(pos.X, pos.Z);
-    }
+    public static Point ToPoint(this Vec3i pos) => new(pos.X, pos.Z);
 
-    public static Vec3i ToVec3i(this EntityPos pos) {
-        return new Vec3i((int)pos.X, (int)pos.Y, (int)pos.Z);
-    }
+    public static Vec3i ToVec3i(this EntityPos pos) => new((int)pos.X, (int)pos.Y, (int)pos.Z);
 
-    public static Point Size(this IWorldManagerAPI api) {
-        return new Point(api.MapSizeX, api.MapSizeZ);
-    }
+    public static Point Size(this IWorldManagerAPI api) => new(api.MapSizeX, api.MapSizeZ);
 
-    public static void UnregisterCommand(this IChatCommandApi api, string name) {
-        ((ChatCommandApi)api).GetType().GetMethod("UnregisterCommand", _flags)?.Invoke(api, [name]);
-    }
+    public static void UnregisterCommand(this IChatCommandApi api, string name) => ((ChatCommandApi)api).GetType().GetMethod("UnregisterCommand", _flags)?.Invoke(api, [name]);
 
     public static void AutoSaveNow(this ICoreServerAPI api) {
         api.Event.RegisterCallback(_ => {
@@ -74,35 +54,22 @@ public static class Extensions {
                 LanguageCode = Lang.CurrentLocale,
                 Command = command,
                 SubCmdCode = "autosavenow",
-                Caller = new Caller {
-                    Type = EnumCallerType.Console,
-                    CallerPrivileges = ["*"],
-                    CallerRole = "admin",
-                    FromChatGroupId = 0
-                },
+                Caller = new Caller { Type = EnumCallerType.Console, CallerPrivileges = ["*"], CallerRole = "admin", FromChatGroupId = 0 },
                 RawArgs = new CmdArgs("")
             });
         }, 1);
     }
 
-    public static T DeepCopy<T>(this T self) where T : BaseOptions {
-        return JsonConvert.DeserializeObject<T>(JsonConvert.SerializeObject(self))!;
-    }
+    public static T DeepCopy<T>(this T self) where T : BaseOptions => JsonConvert.DeserializeObject<T>(JsonConvert.SerializeObject(self))!;
 
     public static Dictionary<string, object> GetHealth(this IPlayer player) {
         EntityBehaviorHealth? health = player.Entity.GetBehavior<EntityBehaviorHealth>();
-        return new Dictionary<string, object> {
-            { "cur", health?.Health ?? 15 },
-            { "max", health?.MaxHealth ?? 15 }
-        };
+        return new Dictionary<string, object> { { "cur", health?.Health ?? 15 }, { "max", health?.MaxHealth ?? 15 } };
     }
 
     public static Dictionary<string, object> GetSatiety(this IPlayer player) {
         EntityBehaviorHunger? satiety = player.Entity.GetBehavior<EntityBehaviorHunger>();
-        return new Dictionary<string, object> {
-            { "cur", satiety?.Saturation ?? 1500 },
-            { "max", satiety?.MaxSaturation ?? 1500 }
-        };
+        return new Dictionary<string, object> { { "cur", satiety?.Saturation ?? 1500 }, { "max", satiety?.MaxSaturation ?? 1500 } };
     }
 
     public static string GetAvatar(this EntityPlayer player) {

@@ -7,8 +7,6 @@ using Newtonsoft.Json;
 namespace livemap.layer;
 
 public abstract class Layer(string id, string label) : Keyed {
-    [JsonProperty(Order = -10)] public string Id { get; } = id;
-
     [JsonProperty(Order = -9)] public string Label { get; } = label;
 
     [JsonProperty(Order = 0)] public virtual int? Interval { get; set; }
@@ -22,7 +20,7 @@ public abstract class Layer(string id, string label) : Keyed {
     [JsonProperty(Order = 999)] public virtual List<Marker> Markers { get; } = [];
 
     /// <summary>
-    /// Custom CSS for this layer's map pane
+    ///     Custom CSS for this layer's map pane
     /// </summary>
     [JsonProperty(Order = 1000)]
     public virtual string? Css { get; set; }
@@ -30,6 +28,7 @@ public abstract class Layer(string id, string label) : Keyed {
     [JsonIgnore] public virtual string Filename => Path.Combine(Files.MarkerDir, $"{Id}.json");
 
     [JsonIgnore] public virtual bool Private { get; set; }
+    [JsonProperty(Order = -10)] public string Id { get; } = id;
 
     public virtual async Task WriteToDisk(CancellationToken cancellationToken) {
         string layerJson = JsonConvert.SerializeObject(this, Files.JsonSerializerMinifiedSettings);

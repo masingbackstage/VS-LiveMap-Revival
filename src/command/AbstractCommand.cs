@@ -4,13 +4,9 @@ using Vintagestory.API.Common;
 namespace livemap.command;
 
 public abstract class AbstractCommand {
-    protected readonly LiveMap _server;
-
-    public string[] Name { get; }
-    public string Description { get; }
-    public string Privilege { get; }
-    public readonly bool RequiresPlayer;
     public readonly ICommandArgumentParser[] ArgParsers;
+    public readonly bool RequiresPlayer;
+    protected readonly LiveMap _server;
 
     protected AbstractCommand(LiveMap server, string[] name, string? privilege = null, bool requiresPlayer = false, params ICommandArgumentParser[] argParsers) {
         _server = server;
@@ -21,6 +17,10 @@ public abstract class AbstractCommand {
         RequiresPlayer = requiresPlayer;
         ArgParsers = argParsers;
     }
+
+    public string[] Name { get; }
+    public string Description { get; }
+    public string Privilege { get; }
 
     public abstract TextCommandResult Execute(TextCommandCallingArgs args);
 }
